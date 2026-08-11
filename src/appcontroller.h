@@ -73,7 +73,12 @@ class AppController : public QObject {
       QString lastPage READ lastPage WRITE setLastPage NOTIFY lastPageChanged)
 
 public:
-  explicit AppController(QObject *parent = nullptr);
+  // Deliberately not default-constructible: QML instantiates a singleton
+  // itself when it can, which quietly produced a second AppController — and so
+  // a second PlayerController and a second sidecar. The UI drove one instance
+  // while MPRIS reported on the other. Without a default constructor the engine
+  // has to go through create(), which hands back the one main() built.
+  explicit AppController(QObject *parent);
   static AppController *create(QQmlEngine *, QJSEngine *);
   static void setInstance(AppController *instance);
 

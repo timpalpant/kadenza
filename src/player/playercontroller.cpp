@@ -1,5 +1,7 @@
 #include "playercontroller.h"
 
+#include <cstdio>
+
 #include <KConfigGroup>
 #include <KSharedConfig>
 
@@ -33,6 +35,7 @@ PlayerController::PlayerController(QObject *parent) : QObject(parent) {
   connect(&m_persistTimer, &QTimer::timeout, this,
           [this] { persistPlayerState(); });
   m_persistTimer.start();
+  m_trace = qEnvironmentVariableIsSet("KANZI_TRACE");
   m_process.setProcessChannelMode(QProcess::SeparateChannels);
   connect(&m_process, &QProcess::readyReadStandardOutput, this, [this] {
     m_stdoutBuffer += m_process.readAllStandardOutput();
@@ -40,8 +43,14 @@ PlayerController::PlayerController(QObject *parent) : QObject(parent) {
     while ((newline = m_stdoutBuffer.indexOf('\n')) >= 0) {
       const auto line = m_stdoutBuffer.left(newline).trimmed();
       m_stdoutBuffer.remove(0, newline + 1);
-      if (!line.isEmpty())
+      if (!line.isEmpty()) {
+        // KANZI_TRACE=1 echoes everything the sidecar reports. The commands
+        // Kanzi sends and the events it gets back travel over separate pipes,
+        // so one can work while the other is silent.
+        if (m_trace)
+          std::fprintf(stderr, "kanzi << %s\n", line.left(400).constData());
         handleLine(line);
+      }
     }
   });
   connect(&m_process, &QProcess::readyReadStandardError, this, [this] {
@@ -214,6 +223,10 @@ void PlayerController::setDemoState() {
 
 void PlayerController::send(const QJsonObject &command) {
   if (m_process.state() == QProcess::Running) {
+    if (m_trace)
+      std::fprintf(
+          stderr, "kanzi >> %s\n",
+          QJsonDocument(command).toJson(QJsonDocument::Compact).constData());
     m_process.write(QJsonDocument(command).toJson(QJsonDocument::Compact) +
                     '\n');
   }
@@ -324,8 +337,10 @@ void PlayerController::handleEvent(const QJsonObject &object) {
     // preview-locked player apart from an unauthorized or unsubscribed one.
     qInfo().noquote()
         << "Kanzi playback:"
-        << "previewOnly=" << object.value(QStringLiteral("previewOnly")).toVariant()
-        << "supported=" << object.value(QStringLiteral("previewOnlySupported")).toBool()
+        << "previewOnly="
+        << object.value(QStringLiteral("previewOnly")).toVariant()
+        << "supported="
+        << object.value(QStringLiteral("previewOnlySupported")).toBool()
         << "authorized=" << object.value(QStringLiteral("authorized")).toBool()
         << "userToken=" << object.value(QStringLiteral("hasUserToken")).toBool()
         << "subscription="
@@ -337,7 +352,8 @@ void PlayerController::handleEvent(const QJsonObject &object) {
     const QString previewError =
         object.value(QStringLiteral("previewOnlyError")).toString();
     if (!previewError.isEmpty())
-      qWarning().noquote() << "Kanzi could not clear preview mode:" << previewError;
+      qWarning().noquote() << "Kanzi could not clear preview mode:"
+                           << previewError;
   } else if (event == QStringLiteral("position")) {
     m_positionMs = object.value(QStringLiteral("positionMs")).toInteger();
     m_durationMs = object.value(QStringLiteral("durationMs")).toInteger();
@@ -349,7 +365,8 @@ void PlayerController::handleEvent(const QJsonObject &object) {
     // ones: the user just got a track that stopped at 1:30 with no
     // explanation. What actually identifies a preview is a playable asset
     // materially shorter than the catalog duration of the same track.
-    const bool preview = m_durationMs > 0 && m_durationMs <= kLongestPreviewMs &&
+    const bool preview = m_durationMs > 0 &&
+                         m_durationMs <= kLongestPreviewMs &&
                          m_catalogDurationMs > m_durationMs + 15000;
     if (preview != m_previewDetected) {
       m_previewDetected = preview;

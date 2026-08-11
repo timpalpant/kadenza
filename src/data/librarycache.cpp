@@ -62,9 +62,9 @@ void LibraryCache::setMetaValue(const QString &key, const QString &value) {
   if (!available())
     return;
   QSqlQuery query(Database::instance().db());
-  query.prepare(QStringLiteral(
-      "INSERT INTO meta (key, value) VALUES (?, ?) "
-      "ON CONFLICT(key) DO UPDATE SET value = excluded.value"));
+  query.prepare(
+      QStringLiteral("INSERT INTO meta (key, value) VALUES (?, ?) "
+                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value"));
   query.addBindValue(key);
   query.addBindValue(value);
   query.exec();

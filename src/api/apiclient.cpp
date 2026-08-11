@@ -65,14 +65,14 @@ void ApiClient::request(const QString &tag, const QString &path,
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/json"));
 
-  auto *reply = method == QByteArrayLiteral("GET")
-                    ? m_network.get(request)
-                    : m_network.sendCustomRequest(
-                          request, method,
-                          body.isEmpty()
-                              ? QByteArray()
-                              : QJsonDocument(body).toJson(
-                                    QJsonDocument::Compact));
+  auto *reply =
+      method == QByteArrayLiteral("GET")
+          ? m_network.get(request)
+          : m_network.sendCustomRequest(
+                request, method,
+                body.isEmpty()
+                    ? QByteArray()
+                    : QJsonDocument(body).toJson(QJsonDocument::Compact));
   connect(reply, &QNetworkReply::finished, this, [this, reply, tag] {
     const QByteArray body = reply->readAll();
     const int status =

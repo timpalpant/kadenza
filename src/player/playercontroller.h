@@ -129,6 +129,7 @@ private:
   void persistPlayerState(bool force = false);
 
   QProcess m_process;
+  bool m_trace = false;
   QTimer m_persistTimer;
   QByteArray m_stdoutBuffer;
   MediaModel m_queue;

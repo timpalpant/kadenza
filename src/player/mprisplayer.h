@@ -66,6 +66,7 @@ public:
   bool shuffle() const;
   void setShuffle(bool shuffle);
   QVariantMap metadata() const;
+  QDBusObjectPath trackId() const;
   double volume() const;
   void setVolume(double volume);
   qlonglong position() const;

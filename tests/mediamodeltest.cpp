@@ -80,7 +80,6 @@ void MediaModelTest::exposesPlaybackIds() {
            QStringList({QStringLiteral("11"), QStringLiteral("22")}));
 }
 
-
 void MediaModelTest::marksUnreleasedCatalogTrackUnavailable() {
   const auto track = [](const QString &id, bool released) {
     QJsonObject attributes{{QStringLiteral("name"), QStringLiteral("Track")}};

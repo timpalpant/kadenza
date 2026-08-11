@@ -42,30 +42,45 @@ Kirigami.Page {
 
     Component.onCompleted: App.loadLibrary(kind)
 
-    ListView {
+    // Kirigami.Page insets its content, which would leave the scrollbar
+    // floating in a gutter a whole grid unit clear of the window edge.
+    // ScrollablePage anchors past that inset for the same reason.
+    leftPadding: 0
+    rightPadding: 0
+    topPadding: 0
+    bottomPadding: 0
+
+    // The views sit in a ScrollView rather than carrying an attached ScrollBar
+    // of their own: an attached bar is drawn over the flickable and reserves no
+    // width, so it landed on top of the last control in every row. ScrollView
+    // insets the content instead, which is also what Kirigami.ScrollablePage
+    // does for the pages that were never affected.
+    QQC2.ScrollView {
         anchors.fill: parent
         visible: !page.gridMode
-        model: page.mediaModel
-        clip: true
-        reuseItems: true
-        delegate: MediaDelegate {
-            onPlayRequested: App.playModel(page.mediaModel, index)
-            onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-        }
-        onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
-        QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-            policy: QQC2.ScrollBar.AsNeeded
+        QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
+
+        ListView {
+            model: page.mediaModel
+            clip: true
+            reuseItems: true
+            delegate: MediaDelegate {
+                onPlayRequested: App.playModel(page.mediaModel, index)
+                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+            }
+            onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
         }
     }
 
-    MediaGrid {
+    QQC2.ScrollView {
         anchors.fill: parent
         visible: page.gridMode
-        model: page.mediaModel
-        sizeScale: page.kind === "artists" ? 0.75 : 1
-        onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
-        QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-            policy: QQC2.ScrollBar.AsNeeded
+        QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
+
+        MediaGrid {
+            model: page.mediaModel
+            sizeScale: page.kind === "artists" ? 0.75 : 1
+            onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
         }
     }
 

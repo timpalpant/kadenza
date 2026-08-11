@@ -12,9 +12,7 @@ bool MediaItem::isSong() const {
          type == QStringLiteral("library-songs");
 }
 
-bool MediaItem::isStation() const {
-  return type == QStringLiteral("stations");
-}
+bool MediaItem::isStation() const { return type == QStringLiteral("stations"); }
 
 bool MediaItem::isPlayable() const {
   return isSong() && streamable && !playbackId().isEmpty();
@@ -123,8 +121,7 @@ MediaItem MediaItem::fromJson(const QJsonObject &object) {
                             .toString();
     }
     if (item.artistId.isEmpty()) {
-      const auto artists = catalogObject
-                               .value(QStringLiteral("relationships"))
+      const auto artists = catalogObject.value(QStringLiteral("relationships"))
                                .toObject()
                                .value(QStringLiteral("artists"))
                                .toObject()
@@ -134,8 +131,9 @@ MediaItem MediaItem::fromJson(const QJsonObject &object) {
         item.artistId =
             artists.first().toObject().value(QStringLiteral("id")).toString();
     }
-    item.favorite = item.favorite ||
-                    catalogAttributes.value(QStringLiteral("inFavorites")).toBool();
+    item.favorite =
+        item.favorite ||
+        catalogAttributes.value(QStringLiteral("inFavorites")).toBool();
   }
   item.artworkUrl = artwork(artworkTemplate);
   return item;

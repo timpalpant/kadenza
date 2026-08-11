@@ -18,8 +18,8 @@
 class LibraryCache {
 public:
   enum Sort {
-    LibraryOrder,   ///< The order Apple returned, as the web player shows it.
-    DateAddedDesc,  ///< Newest first, for Recently Added.
+    LibraryOrder,  ///< The order Apple returned, as the web player shows it.
+    DateAddedDesc, ///< Newest first, for Recently Added.
   };
 
   /// Library collections that are mirrored. These match the Apple Music

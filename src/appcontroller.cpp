@@ -80,14 +80,14 @@ AppController *AppController::s_instance = nullptr;
 
 AppController::AppController(QObject *parent)
     : QObject(parent), m_api(this), m_player(this), m_recent(this),
-      m_heavyRotation(this), m_recentTracks(this), m_recentlyAdded(this), m_songs(this),
-      m_albums(this), m_artists(this), m_playlists(this), m_search(this),
-      m_searchSongs(this), m_searchAlbums(this), m_searchArtists(this),
-      m_searchPlaylists(this), m_detailTracks(this), m_stations(this),
-      m_chartSongs(this),
-      m_chartAlbums(this), m_chartPlaylists(this), m_artistTopSongs(this),
-      m_artistAlbums(this), m_artistSingles(this), m_artistSimilar(this),
-      m_artistLatest(this), m_pendingPlay(this) {
+      m_heavyRotation(this), m_recentTracks(this), m_recentlyAdded(this),
+      m_songs(this), m_albums(this), m_artists(this), m_playlists(this),
+      m_search(this), m_searchSongs(this), m_searchAlbums(this),
+      m_searchArtists(this), m_searchPlaylists(this), m_detailTracks(this),
+      m_stations(this), m_chartSongs(this), m_chartAlbums(this),
+      m_chartPlaylists(this), m_artistTopSongs(this), m_artistAlbums(this),
+      m_artistSingles(this), m_artistSimilar(this), m_artistLatest(this),
+      m_pendingPlay(this) {
   m_demo = qEnvironmentVariableIsSet("KANZI_DEMO");
   m_sidebarWidth = KConfigGroup(KSharedConfig::openConfig(), "General")
                        .readEntry("SidebarWidth", 0);
@@ -126,36 +126,36 @@ AppController::AppController(QObject *parent)
           &AppController::authenticatedChanged);
   connect(&m_player, &PlayerController::errorChanged, this,
           &AppController::errorChanged);
-  connect(
-      &m_player, &PlayerController::actionResult, this,
-      [this](const QString &kind, const QString &id, bool ok,
-             const QString &detail) {
-        if (!ok) {
-          setError(detail.isEmpty() ? tr("Apple Music rejected that change.")
-                                    : detail);
-          return;
-        }
-        const bool isFavorite = kind == QStringLiteral("favorite") ||
-                                kind == QStringLiteral("unfavorite");
-        const bool enabled = kind == QStringLiteral("favorite") ||
-                             kind == QStringLiteral("add-library");
-        auto models = allModels();
-        models.append(m_player.queueModel());
-        for (auto *model : models) {
-          if (isFavorite)
-            model->setFavorite(id, enabled);
-          else
-            model->setInLibrary(id, enabled);
-        }
-        if (isFavorite)
-          m_cache.setFavorite(id, enabled);
-        else
-          m_cache.setInLibrary(id, enabled);
-        setMessage(isFavorite ? (enabled ? tr("Added to Favorites")
-                                         : tr("Removed from Favorites"))
-                              : (enabled ? tr("Added to Library")
-                                         : tr("Removed from Library")));
-      });
+  connect(&m_player, &PlayerController::actionResult, this,
+          [this](const QString &kind, const QString &id, bool ok,
+                 const QString &detail) {
+            if (!ok) {
+              setError(detail.isEmpty()
+                           ? tr("Apple Music rejected that change.")
+                           : detail);
+              return;
+            }
+            const bool isFavorite = kind == QStringLiteral("favorite") ||
+                                    kind == QStringLiteral("unfavorite");
+            const bool enabled = kind == QStringLiteral("favorite") ||
+                                 kind == QStringLiteral("add-library");
+            auto models = allModels();
+            models.append(m_player.queueModel());
+            for (auto *model : models) {
+              if (isFavorite)
+                model->setFavorite(id, enabled);
+              else
+                model->setInLibrary(id, enabled);
+            }
+            if (isFavorite)
+              m_cache.setFavorite(id, enabled);
+            else
+              m_cache.setInLibrary(id, enabled);
+            setMessage(isFavorite ? (enabled ? tr("Added to Favorites")
+                                             : tr("Removed from Favorites"))
+                                  : (enabled ? tr("Added to Library")
+                                             : tr("Removed from Library")));
+          });
   connect(&m_api, &ApiClient::succeeded, this, &AppController::handleSuccess);
   connect(&m_api, &ApiClient::failed, this, &AppController::handleFailure);
   if (m_demo) {
@@ -178,7 +178,9 @@ PlayerController *AppController::player() { return &m_player; }
 MediaModel *AppController::recentModel() { return &m_recent; }
 MediaModel *AppController::heavyRotationModel() { return &m_heavyRotation; }
 MediaModel *AppController::recentTracksModel() { return &m_recentTracks; }
-QVariantList AppController::recommendations() const { return m_recommendations; }
+QVariantList AppController::recommendations() const {
+  return m_recommendations;
+}
 MediaModel *AppController::recentlyAddedModel() { return &m_recentlyAdded; }
 MediaModel *AppController::songsModel() { return &m_songs; }
 MediaModel *AppController::albumsModel() { return &m_albums; }
@@ -385,7 +387,8 @@ QString AppController::libraryPathFor(const QString &cacheKind) {
   // documented as alphabetical with no sort parameter, so deriving Recently
   // Added from it would mean walking the entire library first.
   if (cacheKind == kRecentlyAdded)
-    return QStringLiteral("/v1/me/library/recently-added?limit=%1&include=catalog")
+    return QStringLiteral(
+               "/v1/me/library/recently-added?limit=%1&include=catalog")
         .arg(kRecentlyAddedPageSize);
   return QStringLiteral("/v1/me/library/%1?limit=%2&include=catalog")
       .arg(cacheKind)
@@ -523,10 +526,10 @@ void AppController::handleRecommendations(const QJsonDocument &document) {
     model->replace(contents);
     m_recommendationModels.push_back(model);
     requestRatingsFor(model);
-    m_recommendations.push_back(QVariantMap{
-        {QStringLiteral("title"), title},
-        {QStringLiteral("model"), QVariant::fromValue(
-                                      static_cast<QObject *>(model))}});
+    m_recommendations.push_back(
+        QVariantMap{{QStringLiteral("title"), title},
+                    {QStringLiteral("model"),
+                     QVariant::fromValue(static_cast<QObject *>(model))}});
   }
   Q_EMIT recommendationsChanged();
 }
@@ -536,25 +539,25 @@ void AppController::handleArtistDetail(const QJsonDocument &document) {
   if (data.isEmpty())
     return;
   const auto resource = data.first().toObject();
-  const auto attributes = resource.value(QStringLiteral("attributes")).toObject();
+  const auto attributes =
+      resource.value(QStringLiteral("attributes")).toObject();
   if (m_detailTitle.isEmpty()) {
     m_detailTitle = attributes.value(QStringLiteral("name")).toString();
     Q_EMIT detailChanged();
   }
   if (m_detailArtwork.isEmpty()) {
-    m_detailArtwork = MediaItem::artwork(attributes.value(QStringLiteral("artwork"))
-                                             .toObject()
-                                             .value(QStringLiteral("url"))
-                                             .toString());
+    m_detailArtwork =
+        MediaItem::artwork(attributes.value(QStringLiteral("artwork"))
+                               .toObject()
+                               .value(QStringLiteral("url"))
+                               .toString());
     Q_EMIT detailChanged();
   }
 
   const auto views = resource.value(QStringLiteral("views")).toObject();
   const auto fill = [&views](const QString &name, MediaModel *model) {
-    model->replace(views.value(name)
-                       .toObject()
-                       .value(QStringLiteral("data"))
-                       .toArray());
+    model->replace(
+        views.value(name).toObject().value(QStringLiteral("data")).toArray());
     model->setLoading(false);
   };
   fill(QStringLiteral("latest-release"), &m_artistLatest);
@@ -613,9 +616,10 @@ void AppController::search(const QString &term) {
     query.addQueryItem(QStringLiteral("types"),
                        QStringLiteral("library-songs,library-albums,"
                                       "library-artists,library-playlists"));
-    requestModel(QStringLiteral("search"),
-                 QStringLiteral("/v1/me/library/search?%1").arg(query.toString()),
-                 &m_search);
+    requestModel(
+        QStringLiteral("search"),
+        QStringLiteral("/v1/me/library/search?%1").arg(query.toString()),
+        &m_search);
     return;
   }
   query.addQueryItem(QStringLiteral("types"),
@@ -684,7 +688,8 @@ void AppController::applyRating(const QString &id, int rating) {
   m_cache.setRating(id, rating);
 }
 
-void AppController::handleRatings(const QString &, const QJsonDocument &document) {
+void AppController::handleRatings(const QString &,
+                                  const QJsonDocument &document) {
   for (const auto &value :
        document.object().value(QStringLiteral("data")).toArray()) {
     const auto rating = value.toObject();
@@ -721,8 +726,7 @@ void AppController::setRating(const QString &id, const QString &type,
   resource.remove(QStringLiteral("library-"));
   if (resource.isEmpty())
     resource = QStringLiteral("songs");
-  const QString path =
-      QStringLiteral("/v1/me/ratings/%1/%2").arg(resource, id);
+  const QString path = QStringLiteral("/v1/me/ratings/%1/%2").arg(resource, id);
   if (value == 0) {
     m_api.del(QStringLiteral("rating-clear"), path);
     return;
@@ -840,9 +844,9 @@ void AppController::openDetail(const QString &id, const QString &catalogId,
   if (!m_detailRatingId.isEmpty() && !m_demo && authenticated()) {
     QString resource = type;
     resource.remove(QStringLiteral("library-"));
-    m_api.get(kRatingsTagPrefix + QStringLiteral("detail"),
-              QStringLiteral("/v1/me/ratings/%1/%2")
-                  .arg(resource, m_detailRatingId));
+    m_api.get(
+        kRatingsTagPrefix + QStringLiteral("detail"),
+        QStringLiteral("/v1/me/ratings/%1/%2").arg(resource, m_detailRatingId));
   }
 
   const bool artist = type.contains(QStringLiteral("artist"));
@@ -927,11 +931,11 @@ void AppController::playDetail(int startIndex) {
 }
 
 QList<MediaModel *> AppController::allModels() {
-  return {&m_recent,       &m_heavyRotation, &m_recentlyAdded, &m_stations,
-          &m_songs,        &m_albums,        &m_artists,
-          &m_playlists,    &m_search,        &m_searchSongs,
-          &m_searchAlbums, &m_searchArtists, &m_searchPlaylists,
-          &m_detailTracks};
+  return {&m_recent,          &m_heavyRotation, &m_recentlyAdded,
+          &m_stations,        &m_songs,         &m_albums,
+          &m_artists,         &m_playlists,     &m_search,
+          &m_searchSongs,     &m_searchAlbums,  &m_searchArtists,
+          &m_searchPlaylists, &m_detailTracks};
 }
 
 void AppController::setFavorite(const QString &id, const QString &type,
@@ -1049,9 +1053,10 @@ void AppController::handleSuccess(const QString &tag,
   if (tag == QStringLiteral("rating-love") ||
       tag == QStringLiteral("rating-dislike") ||
       tag == QStringLiteral("rating-clear")) {
-    setMessage(tag == QStringLiteral("rating-love")   ? tr("Loved")
-               : tag == QStringLiteral("rating-dislike") ? tr("Disliked")
-                                                          : tr("Rating cleared"));
+    setMessage(tag == QStringLiteral("rating-love") ? tr("Loved")
+               : tag == QStringLiteral("rating-dislike")
+                   ? tr("Disliked")
+                   : tr("Rating cleared"));
     return;
   }
   if (tag == QStringLiteral("charts")) {
@@ -1099,9 +1104,7 @@ void AppController::handleSuccess(const QString &tag,
     return;
   }
   if (tag == QStringLiteral("storefront")) {
-    const auto data = document.object()
-                          .value(QStringLiteral("data"))
-                          .toArray();
+    const auto data = document.object().value(QStringLiteral("data")).toArray();
     if (data.isEmpty())
       return;
     const QString id =
@@ -1214,9 +1217,8 @@ void AppController::handleFailure(const QString &tag, int status,
     if (auto *model = modelForKind(cacheKind))
       model->setLoading(false);
     if (m_cache.count(cacheKind) == 0)
-      setError(tr("Could not load your library (%1): %2")
-                   .arg(status)
-                   .arg(message));
+      setError(
+          tr("Could not load your library (%1): %2").arg(status).arg(message));
     Q_EMIT syncingChanged();
     return;
   }

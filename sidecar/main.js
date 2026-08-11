@@ -40,12 +40,20 @@ let signInRequested = false
 let sessionSettled = false
 const authWindows = new Set()
 
+// Both pipes belong to Kanzi, so both break the moment it goes away. Node
+// raises EPIPE on the next write, and an uncaught one in Electron's main
+// process puts a modal "A JavaScript error occurred" dialog on screen — from a
+// helper the user cannot see and about a parent that no longer exists.
 function send(message) {
-  process.stdout.write(JSON.stringify(message) + '\n')
+  try {
+    process.stdout.write(JSON.stringify(message) + '\n')
+  } catch { /* Kanzi is gone; the shutdown path below handles it */ }
 }
 
 function log(...parts) {
-  process.stderr.write('[kanzi-sidecar] ' + parts.join(' ') + '\n')
+  try {
+    process.stderr.write('[kanzi-sidecar] ' + parts.join(' ') + '\n')
+  } catch { /* nowhere left to log to */ }
 }
 
 function fail(code, error) {
@@ -413,6 +421,19 @@ app.whenReady().then(async () => {
 // terminate() before the parent resorts to kill(). Exiting here rather than
 // letting the default handler run means Chromium tears its own children down
 // instead of leaving them orphaned.
+// A stream error is delivered to its 'error' listener rather than thrown, but
+// only if there is one; without these Node throws instead.
+process.stdout.on('error', () => app.exit(0))
+process.stderr.on('error', () => {})
+
+// Last resort. Anything unhandled here would otherwise raise Electron's modal
+// error dialog over whatever the user is doing, so it goes to Kanzi's log and
+// the sidecar stops; Kanzi restarts it.
+process.on('uncaughtException', error => {
+  log('unhandled error in the sidecar:', (error && error.stack) || error)
+  app.exit(1)
+})
+
 for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
   process.on(signal, () => {
     log(`received ${signal}; shutting down`)

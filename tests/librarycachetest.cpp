@@ -1,5 +1,5 @@
-#include "database.h"
 #include "librarycache.h"
+#include "database.h"
 
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -162,22 +162,25 @@ void LibraryCacheTest::interruptedSyncKeepsPreviousContents() {
 
 void LibraryCacheTest::updatesFavoriteByCatalogId() {
   const qint64 epoch = m_cache.beginSync(kAlbums);
-  m_cache.upsert(
-      kAlbums, {makeItem("l.1", "Album", "2026-01-01T00:00:00Z", "cat-1")},
-      epoch, 0);
+  m_cache.upsert(kAlbums,
+                 {makeItem("l.1", "Album", "2026-01-01T00:00:00Z", "cat-1")},
+                 epoch, 0);
   m_cache.finishSync(kAlbums, epoch);
 
-  QVERIFY(!m_cache.items(kAlbums, LibraryCache::LibraryOrder, 1).first().favorite);
+  QVERIFY(
+      !m_cache.items(kAlbums, LibraryCache::LibraryOrder, 1).first().favorite);
   // The UI knows catalog ids; the cache row is keyed by the library id.
   m_cache.setFavorite(QStringLiteral("cat-1"), true);
-  QVERIFY(m_cache.items(kAlbums, LibraryCache::LibraryOrder, 1).first().favorite);
+  QVERIFY(
+      m_cache.items(kAlbums, LibraryCache::LibraryOrder, 1).first().favorite);
 }
 
 void LibraryCacheTest::storesAndUpdatesRatings() {
   const qint64 epoch = m_cache.beginSync(kAlbums);
   auto loved = makeItem("1", "Loved", "2026-01-01T00:00:00Z", "cat-1");
   loved.rating = 1;
-  m_cache.upsert(kAlbums, {loved, makeItem("2", "Unrated", "2026-01-02T00:00:00Z")},
+  m_cache.upsert(kAlbums,
+                 {loved, makeItem("2", "Unrated", "2026-01-02T00:00:00Z")},
                  epoch, 0);
   m_cache.finishSync(kAlbums, epoch);
 

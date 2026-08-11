@@ -47,9 +47,12 @@ const char *const CreateStatements[] = {
         sync_epoch       INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (kind, id)
     ))",
-    "CREATE INDEX IF NOT EXISTS idx_library_position ON library_items(kind, position)",
-    "CREATE INDEX IF NOT EXISTS idx_library_date ON library_items(kind, date_added DESC)",
-    "CREATE INDEX IF NOT EXISTS idx_library_catalog ON library_items(catalog_id)",
+    "CREATE INDEX IF NOT EXISTS idx_library_position ON library_items(kind, "
+    "position)",
+    "CREATE INDEX IF NOT EXISTS idx_library_date ON library_items(kind, "
+    "date_added DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_library_catalog ON "
+    "library_items(catalog_id)",
 };
 
 } // namespace
@@ -137,7 +140,6 @@ bool Database::createSchema() {
     setSchemaVersion(CurrentSchemaVersion);
   return true;
 }
-
 
 void Database::wipe() {
   if (!m_open)

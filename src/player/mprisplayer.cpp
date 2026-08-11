@@ -39,9 +39,8 @@ MprisPlayerAdaptor::MprisPlayerAdaptor(PlayerController *player,
     announce({{QStringLiteral("Metadata"), metadata()},
               {QStringLiteral("PlaybackStatus"), playbackStatus()}});
   });
-  connect(player, &PlayerController::volumeChanged, this, [this] {
-    announce({{QStringLiteral("Volume"), volume()}});
-  });
+  connect(player, &PlayerController::volumeChanged, this,
+          [this] { announce({{QStringLiteral("Volume"), volume()}}); });
   connect(player, &PlayerController::modesChanged, this, [this] {
     announce({{QStringLiteral("Shuffle"), shuffle()},
               {QStringLiteral("LoopStatus"), loopStatus()}});
@@ -104,11 +103,30 @@ qlonglong MprisPlayerAdaptor::position() const {
   return m_player->positionMs() * 1000;
 }
 
+// The spec wants a distinct path per track, and clients use a change of it to
+// notice that the track changed. A single fixed path told them every track was
+// the same one. Apple's ids carry dots, which object paths do not allow.
+QDBusObjectPath MprisPlayerAdaptor::trackId() const {
+  const QString id = m_player->currentId();
+  QString path;
+  path.reserve(id.size());
+  for (const QChar character : id) {
+    const char16_t code = character.unicode();
+    const bool usable = (code >= u'a' && code <= u'z') ||
+                        (code >= u'A' && code <= u'Z') ||
+                        (code >= u'0' && code <= u'9') || code == u'_';
+    path += usable ? character : QLatin1Char('_');
+  }
+  if (path.isEmpty())
+    return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kanzi/none"));
+  return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kanzi/track/") +
+                         path);
+}
+
 QVariantMap MprisPlayerAdaptor::metadata() const {
   QVariantMap result;
   result.insert(QStringLiteral("mpris:trackid"),
-                QVariant::fromValue(QDBusObjectPath(
-                    QStringLiteral("/io/github/timpalpant/kanzi/current"))));
+                QVariant::fromValue(trackId()));
   result.insert(QStringLiteral("mpris:length"), m_player->durationMs() * 1000);
   result.insert(QStringLiteral("xesam:title"), m_player->title());
   result.insert(QStringLiteral("xesam:artist"),

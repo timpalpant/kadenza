@@ -36,11 +36,11 @@ QQC2.ItemDelegate {
 
     readonly property bool song: root.mediaType === "songs" || root.mediaType === "library-songs"
 
-    // Wide enough that pulling five buttons out of the menu still leaves the
+    // Wide enough that pulling three buttons out of the menu still leaves the
     // title and album room to breathe. A track list on a detail page clears
     // this easily; the Up Next panel does not.
     readonly property bool roomForActions:
-        root.song && !root.compact && root.width > Kirigami.Units.gridUnit * 36
+        root.song && !root.compact && root.width > Kirigami.Units.gridUnit * 30
 
     width: ListView.view ? ListView.view.width : implicitWidth
     height: root.hidePast && root.past ? 0 : implicitHeight
@@ -163,30 +163,6 @@ QQC2.ItemDelegate {
             display: QQC2.AbstractButton.IconOnly
             enabled: root.playable
             onClicked: App.player.playLater(root.catalogId || root.mediaId)
-            QQC2.ToolTip.visible: hovered
-            QQC2.ToolTip.text: text
-        }
-        QQC2.ToolButton {
-            visible: root.roomForActions
-            text: root.rating > 0 ? i18n("Loved") : i18n("Love")
-            icon.name: "love"
-            display: QQC2.AbstractButton.IconOnly
-            checkable: true
-            checked: root.rating > 0
-            onClicked: App.setRating(root.catalogId || root.mediaId,
-                                     root.mediaType, root.rating > 0 ? 0 : 1)
-            QQC2.ToolTip.visible: hovered
-            QQC2.ToolTip.text: text
-        }
-        QQC2.ToolButton {
-            visible: root.roomForActions
-            text: root.rating < 0 ? i18n("Disliked") : i18n("Dislike")
-            icon.name: "dialog-cancel"
-            display: QQC2.AbstractButton.IconOnly
-            checkable: true
-            checked: root.rating < 0
-            onClicked: App.setRating(root.catalogId || root.mediaId,
-                                     root.mediaType, root.rating < 0 ? 0 : -1)
             QQC2.ToolTip.visible: hovered
             QQC2.ToolTip.text: text
         }

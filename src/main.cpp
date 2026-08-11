@@ -137,16 +137,16 @@ int main(int argc, char *argv[]) {
     const int settle =
         qEnvironmentVariableIntValue("KANZI_SCREENSHOT_DELAY", &delayOk);
     const int settleMs = delayOk && settle > 0 ? settle : 2500;
-    QTimer::singleShot(250, window, [window, page, screenshotPath, settleMs,
-                                     &app] {
-      QMetaObject::invokeMethod(window, "navigate", Q_ARG(QVariant, page));
-      QTimer::singleShot(settleMs, window, [window, screenshotPath, &app] {
-        if (!window->grabWindow().save(screenshotPath))
-          qCritical().noquote()
-              << "Could not save screenshot:" << screenshotPath;
-        app.quit();
-      });
-    });
+    QTimer::singleShot(
+        250, window, [window, page, screenshotPath, settleMs, &app] {
+          QMetaObject::invokeMethod(window, "navigate", Q_ARG(QVariant, page));
+          QTimer::singleShot(settleMs, window, [window, screenshotPath, &app] {
+            if (!window->grabWindow().save(screenshotPath))
+              qCritical().noquote()
+                  << "Could not save screenshot:" << screenshotPath;
+            app.quit();
+          });
+        });
   }
   return app.exec();
 }

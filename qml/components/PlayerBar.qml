@@ -13,6 +13,27 @@ QQC2.ToolBar {
 
     readonly property bool compact: applicationWindow().compactMode
 
+    // The queue model's get() is a plain call rather than a binding source, so
+    // the playing track's rating has to be re-read whenever the queue changes
+    // underneath it. Same shape as Now Playing, which needs it for the same
+    // reason.
+    property int queueRevision: 0
+    readonly property var currentItem: {
+        const revision = root.queueRevision;
+        return App.player.currentQueueIndex >= 0
+               ? App.player.queueModel.get(App.player.currentQueueIndex)
+               : ({});
+    }
+    readonly property int currentRating: root.currentItem.rating || 0
+
+    Connections {
+        target: App.player.queueModel
+        function onDataChanged() { root.queueRevision++ }
+        function onModelReset() { root.queueRevision++ }
+        function onRowsInserted() { root.queueRevision++ }
+        function onRowsRemoved() { root.queueRevision++ }
+    }
+
     function formatTime(milliseconds) {
         const seconds = Math.max(0, Math.floor(milliseconds / 1000));
         const minutes = Math.floor(seconds / 60);
@@ -191,12 +212,13 @@ QQC2.ToolBar {
                 spacing: 0
 
                 property real volumeBeforeMute: 1
-                // Room for the two buttons, the slider, and as much clear
-                // space again, so the slider appears only when it is not
-                // pressed up against the transport.
+                // Room for every button, the slider itself, and a margin on
+                // top, so it appears only when it is not pressed up against
+                // the transport.
                 readonly property bool hasRoomForVolume:
-                    width > queueButton.implicitWidth + volumeButton.implicitWidth
-                            + Kirigami.Units.gridUnit * 12
+                    width > loveButton.implicitWidth + dislikeButton.implicitWidth
+                            + queueButton.implicitWidth + volumeButton.implicitWidth
+                            + Kirigami.Units.gridUnit * 8
                 anchors.left: transport.right
                 anchors.leftMargin: Kirigami.Units.largeSpacing
                 anchors.right: parent.right
@@ -204,6 +226,36 @@ QQC2.ToolBar {
 
                 Item { Layout.fillWidth: true }
 
+                // Rating what is playing, without leaving whatever page you
+                // are on.
+                QQC2.ToolButton {
+                    id: loveButton
+                    visible: !root.compact
+                    text: root.currentRating > 0 ? i18n("Loved") : i18n("Love")
+                    icon.name: "love"
+                    display: QQC2.AbstractButton.IconOnly
+                    checkable: true
+                    checked: root.currentRating > 0
+                    enabled: App.player.currentId.length > 0
+                    onClicked: App.setRating(App.player.currentId, "songs",
+                                             root.currentRating > 0 ? 0 : 1)
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.text: text
+                }
+                QQC2.ToolButton {
+                    id: dislikeButton
+                    visible: !root.compact
+                    text: root.currentRating < 0 ? i18n("Disliked") : i18n("Dislike")
+                    icon.name: "dialog-cancel"
+                    display: QQC2.AbstractButton.IconOnly
+                    checkable: true
+                    checked: root.currentRating < 0
+                    enabled: App.player.currentId.length > 0
+                    onClicked: App.setRating(App.player.currentId, "songs",
+                                             root.currentRating < 0 ? 0 : -1)
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.text: text
+                }
                 QQC2.ToolButton {
                     id: queueButton
                     visible: !root.compact

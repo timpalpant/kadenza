@@ -63,6 +63,11 @@ Use `KANZI_SHOW_SIDECAR=1 ./build/kanzi` to keep the playback window visible
 while diagnosing MusicKit or DRM problems. `KANZI_SIDECAR=/path/to/sidecar`
 overrides sidecar discovery.
 
+`KANZI_TRACE=1` echoes the sidecar protocol to stderr, `>>` for commands Kanzi
+sends and `<<` for events it receives. The two directions are separate pipes,
+so one can work while the other is silent — which is what a player that plays
+audio but reports nothing looks like.
+
 The checked-in screenshots are captures of Kanzi's built-in, fictional demo
 library. To regenerate one without an Apple account:
 
