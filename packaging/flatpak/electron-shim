@@ -1,0 +1,4 @@
+#!/bin/sh
+# zypak must be Electron's direct parent inside Flatpak.
+exec zypak-wrapper "$(dirname "$0")/electron.bin" "$@"
+

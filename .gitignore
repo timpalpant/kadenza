@@ -54,3 +54,9 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+/build*/
+/staging/
+/dist/
+/.cache/
+/sidecar/node_modules/
+npm-debug.log*

@@ -1,0 +1,35 @@
+# Maintainer: Tim Palpant <tim@palpant.us>
+
+pkgname=kanzi
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Native Apple Music client for KDE Plasma"
+arch=('x86_64')
+url="https://github.com/timpalpant/kanzi"
+license=('GPL-3.0-or-later')
+depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig' 'knotifications' 'kglobalaccel' 'glibc')
+optdepends=('qqc2-desktop-style: native appearance outside Plasma')
+makedepends=('cmake' 'ninja' 'libarchive')
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz"
+        "electron.zip::https://github.com/castlabs/electron-releases/releases/download/v43.0.0%2Bwvcus/electron-v43.0.0+wvcus-linux-x64.zip")
+sha256sums=('REPLACE_WITH_RELEASE_SHA256' '53782f44b8a88703ed54da1602c54c0af998ce076839f719efe1c850b05baccf')
+noextract=('electron.zip')
+
+prepare() {
+  mkdir -p electron-dist
+  bsdtar -xf electron.zip -C electron-dist
+}
+
+build() {
+  cmake -B build -S "$pkgname-$pkgver" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+  cmake --build build
+}
+
+check() { ctest --test-dir build --output-on-failure --no-tests=error; }
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  local sidecar="$pkgdir/usr/share/kanzi/sidecar/node_modules/electron/dist"
+  install -d "$sidecar"
+  cp -a "$srcdir/electron-dist/"* "$sidecar/"
+}

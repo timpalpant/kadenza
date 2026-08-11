@@ -1,0 +1,5 @@
+#pragma once
+
+#define KANZI_VERSION_STRING "@PROJECT_VERSION@"
+#define KANZI_APP_ID "io.github.timpalpant.kanzi"
+

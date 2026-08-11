@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - run: pacman -Syu --noconfirm --needed base-devel cmake ninja git qt6-base qt6-declarative qt6-tools kirigami ki18n kcoreaddons kconfig appstream
+      - uses: actions/checkout@v7
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Verify version and build
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          project=$(grep -oP 'project\(kanzi VERSION \K[0-9.]+' CMakeLists.txt)
+          test "$tag" = "$project"
+          grep -q "version=\"$tag\"" data/io.github.timpalpant.kanzi.metainfo.xml
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake --build build
+          ctest --test-dir build --output-on-failure --no-tests=error
+
+  source:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Create source archive
+        run: |
+          name="kanzi-${GITHUB_REF_NAME#v}"
+          git archive --format=tar.gz --prefix="$name/" -o "$name.tar.gz" "$GITHUB_REF_NAME"
+          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: source
+          path: kanzi-*.tar.gz*
+
+  publish:
+    needs: source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: source }
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: kanzi-*.tar.gz*
+

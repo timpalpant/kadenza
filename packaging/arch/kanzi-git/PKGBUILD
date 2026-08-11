@@ -1,0 +1,45 @@
+# Maintainer: Tim Palpant <tim@palpant.us>
+
+pkgname=kanzi-git
+_pkgname=kanzi
+pkgver=0.1.0.r0.g0000000
+pkgrel=1
+pkgdesc="Native Apple Music client for KDE Plasma (development version)"
+arch=('x86_64')
+url="https://github.com/timpalpant/kanzi"
+license=('GPL-3.0-or-later')
+depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig'
+         'knotifications' 'kglobalaccel' 'glibc')
+optdepends=('qqc2-desktop-style: native appearance outside Plasma')
+makedepends=('cmake' 'ninja' 'git' 'libarchive')
+provides=("$_pkgname=$pkgver")
+conflicts=("$_pkgname")
+source=("$_pkgname::git+$url.git"
+        "electron.zip::https://github.com/castlabs/electron-releases/releases/download/v43.0.0%2Bwvcus/electron-v43.0.0+wvcus-linux-x64.zip")
+sha256sums=('SKIP' '53782f44b8a88703ed54da1602c54c0af998ce076839f719efe1c850b05baccf')
+noextract=('electron.zip')
+
+prepare() {
+  mkdir -p electron-dist
+  bsdtar -xf electron.zip -C electron-dist
+}
+
+pkgver() {
+  cd "$_pkgname"
+  git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' \
+    || printf "0.0.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+  cmake -B build -S "$_pkgname" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+  cmake --build build
+}
+
+check() { ctest --test-dir build --output-on-failure --no-tests=error; }
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  local sidecar="$pkgdir/usr/share/kanzi/sidecar/node_modules/electron/dist"
+  install -d "$sidecar"
+  cp -a "$srcdir/electron-dist/"* "$sidecar/"
+}

@@ -1,0 +1,4 @@
+#!/bin/sh
+export KANZI_SIDECAR="${KANZI_SIDECAR:-/app/share/kanzi/sidecar}"
+exec /app/bin/kanzi.real "$@"
+

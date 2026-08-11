@@ -1,0 +1,9 @@
+[Global]
+IconName=io.github.timpalpant.kanzi
+Name=Kanzi
+Comment=Apple Music client for KDE Plasma
+
+[Event/trackChanged]
+Name=Track changed
+Comment=A new track started playing
+Action=Popup
