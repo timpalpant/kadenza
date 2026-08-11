@@ -28,7 +28,6 @@ ui_*.h
 *.qmlc
 *.jsc
 Makefile*
-*build-*
 build/
 *.qm
 *.prl
@@ -54,6 +53,9 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+# Anchored to the repo root and to directories on purpose: the unanchored
+# `*build-*` this used to be paired with also matched ordinary files, which
+# silently excluded packaging/build-arch-package.sh from the repo.
 /build*/
 /staging/
 /dist/

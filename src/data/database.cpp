@@ -57,99 +57,104 @@ const char *const CreateStatements[] = {
 
 } // namespace
 
-Database &Database::instance() {
-  static Database self;
-  return self;
+Database &Database::instance()
+{
+    static Database self;
+    return self;
 }
 
-QSqlDatabase Database::db() const {
-  return QSqlDatabase::database(m_connectionName);
+QSqlDatabase Database::db() const
+{
+    return QSqlDatabase::database(m_connectionName);
 }
 
-bool Database::isOpen() const { return m_open; }
-
-bool Database::open(const QString &path) {
-  QString file = path;
-  if (file.isEmpty()) {
-    const QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(dir);
-    file = dir + QStringLiteral("/kanzi.sqlite");
-  }
-
-  QSqlDatabase database =
-      QSqlDatabase::contains(m_connectionName)
-          ? QSqlDatabase::database(m_connectionName)
-          : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"),
-                                      m_connectionName);
-  database.setDatabaseName(file);
-
-  if (!database.open()) {
-    m_lastError = database.lastError().text();
-    qWarning() << "kanzi: cannot open cache" << file << m_lastError;
-    return false;
-  }
-
-  QSqlQuery pragma(database);
-  // WAL keeps reads responsive while a sync writes, and NORMAL is the right
-  // durability trade-off for a cache that can always be rebuilt from Apple.
-  pragma.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
-  pragma.exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
-
-  m_open = true;
-  return createSchema();
+bool Database::isOpen() const
+{
+    return m_open;
 }
 
-void Database::close() {
-  if (m_open) {
-    QSqlDatabase::database(m_connectionName).close();
-    m_open = false;
-  }
-}
-
-int Database::schemaVersion() {
-  QSqlQuery query(db());
-  if (query.exec(QStringLiteral("PRAGMA user_version")) && query.next())
-    return query.value(0).toInt();
-  return 0;
-}
-
-void Database::setSchemaVersion(int version) {
-  QSqlQuery query(db());
-  query.exec(QStringLiteral("PRAGMA user_version=%1").arg(version));
-}
-
-bool Database::createSchema() {
-  QSqlDatabase database = db();
-  database.transaction();
-
-  for (const char *statement : CreateStatements) {
-    QSqlQuery query(database);
-    if (!query.exec(QLatin1String(statement))) {
-      m_lastError = query.lastError().text();
-      qWarning() << "kanzi: schema error" << m_lastError
-                 << QLatin1String(statement).left(60);
-      database.rollback();
-      return false;
+bool Database::open(const QString &path)
+{
+    QString file = path;
+    if (file.isEmpty()) {
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        QDir().mkpath(dir);
+        file = dir + QStringLiteral("/kanzi.sqlite");
     }
-  }
 
-  database.commit();
+    QSqlDatabase database = QSqlDatabase::contains(m_connectionName) ? QSqlDatabase::database(m_connectionName)
+                                                                     : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
+    database.setDatabaseName(file);
 
-  if (schemaVersion() != CurrentSchemaVersion)
-    setSchemaVersion(CurrentSchemaVersion);
-  return true;
+    if (!database.open()) {
+        m_lastError = database.lastError().text();
+        qWarning() << "kanzi: cannot open cache" << file << m_lastError;
+        return false;
+    }
+
+    QSqlQuery pragma(database);
+    // WAL keeps reads responsive while a sync writes, and NORMAL is the right
+    // durability trade-off for a cache that can always be rebuilt from Apple.
+    pragma.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
+    pragma.exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
+
+    m_open = true;
+    return createSchema();
 }
 
-void Database::wipe() {
-  if (!m_open)
-    return;
-  QSqlDatabase database = db();
-  database.transaction();
-  for (const auto &table :
-       {QStringLiteral("library_items"), QStringLiteral("meta")}) {
-    QSqlQuery query(database);
-    query.exec(QStringLiteral("DELETE FROM %1").arg(table));
-  }
-  database.commit();
+void Database::close()
+{
+    if (m_open) {
+        QSqlDatabase::database(m_connectionName).close();
+        m_open = false;
+    }
+}
+
+int Database::schemaVersion()
+{
+    QSqlQuery query(db());
+    if (query.exec(QStringLiteral("PRAGMA user_version")) && query.next())
+        return query.value(0).toInt();
+    return 0;
+}
+
+void Database::setSchemaVersion(int version)
+{
+    QSqlQuery query(db());
+    query.exec(QStringLiteral("PRAGMA user_version=%1").arg(version));
+}
+
+bool Database::createSchema()
+{
+    QSqlDatabase database = db();
+    database.transaction();
+
+    for (const char *statement : CreateStatements) {
+        QSqlQuery query(database);
+        if (!query.exec(QLatin1String(statement))) {
+            m_lastError = query.lastError().text();
+            qWarning() << "kanzi: schema error" << m_lastError << QLatin1String(statement).left(60);
+            database.rollback();
+            return false;
+        }
+    }
+
+    database.commit();
+
+    if (schemaVersion() != CurrentSchemaVersion)
+        setSchemaVersion(CurrentSchemaVersion);
+    return true;
+}
+
+void Database::wipe()
+{
+    if (!m_open)
+        return;
+    QSqlDatabase database = db();
+    database.transaction();
+    for (const auto &table : {QStringLiteral("library_items"), QStringLiteral("meta")}) {
+        QSqlQuery query(database);
+        query.exec(QStringLiteral("DELETE FROM %1").arg(table));
+    }
+    database.commit();
 }

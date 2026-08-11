@@ -63,6 +63,13 @@ Use `KANZI_SHOW_SIDECAR=1 ./build/kanzi` to keep the playback window visible
 while diagnosing MusicKit or DRM problems. `KANZI_SIDECAR=/path/to/sidecar`
 overrides sidecar discovery.
 
+Kanzi looks for its Widevine-enabled Electron runtime in three places, in
+order: `KANZI_ELECTRON=/path/to/electron`, the sidecar's own bundled copy
+(`npm --prefix sidecar install`, above), and `electron43-castlab-bin` on
+`PATH`. The Arch package depends on that last one instead of bundling a
+second ~150MB copy; the .deb, .rpm and Flatpak still bundle it, since none of
+those ecosystems have an equivalent shared package.
+
 `KANZI_TRACE=1` echoes the sidecar protocol to stderr, `>>` for commands Kanzi
 sends and `<<` for events it receives. The two directions are separate pipes,
 so one can work while the other is silent — which is what a player that plays

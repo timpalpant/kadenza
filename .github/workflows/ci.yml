@@ -12,58 +12,378 @@ concurrency:
 
 jobs:
   build:
+    name: Build and test
     runs-on: ubuntu-latest
+    # KDE Frameworks 6 is packaged far more currently on Arch than on the
+    # runner's Ubuntu, and Arch is the primary target anyway.
     container: archlinux:latest
     steps:
       - name: Install dependencies
-        run: pacman -Syu --noconfirm --needed base-devel cmake ninja git qt6-base qt6-declarative qt6-tools kirigami ki18n kcoreaddons kconfig knotifications kglobalaccel
-      - uses: actions/checkout@v7
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-      - run: cmake --build build
-      - run: ctest --test-dir build --output-on-failure --no-tests=error
-      - name: Verify install tree
         run: |
-          DESTDIR="$PWD/staging" cmake --install build --prefix /usr
+          pacman -Syu --noconfirm --needed \
+            base-devel cmake ninja git \
+            qt6-base qt6-declarative qt6-tools \
+            kirigami ki18n kconfig kcoreaddons \
+            knotifications kglobalaccel
+
+      - uses: actions/checkout@v7
+
+      - name: Trust the workspace
+        # The container runs as root while the checkout is owned by the runner
+        # user, which git otherwise refuses to touch.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        # The suite is headless and touches neither the network nor an Apple
+        # Music account, so it needs no display and no credentials.
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Verify the install tree
+        run: |
+          DESTDIR="$PWD/staging" cmake --install build
+          find staging -type f | sort
+          # The desktop entry's Icon= must resolve to an installed icon,
+          # otherwise the launcher shows a blank tile.
           test -x staging/usr/bin/kanzi
           test -f staging/usr/share/applications/io.github.timpalpant.kanzi.desktop
           test -f staging/usr/share/metainfo/io.github.timpalpant.kanzi.metainfo.xml
           test -f staging/usr/share/icons/hicolor/scalable/apps/io.github.timpalpant.kanzi.svg
+          # Playback is useless without the sidecar, so it has to ship too.
           test -f staging/usr/share/kanzi/sidecar/main.js
 
   lint:
+    name: QML and metadata
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
       - name: Install dependencies
-        run: pacman -Syu --noconfirm --needed base-devel cmake ninja git nodejs qt6-base qt6-declarative qt6-tools kirigami ki18n kcoreaddons kconfig knotifications kglobalaccel appstream desktop-file-utils
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel cmake ninja git nodejs \
+            qt6-base qt6-declarative qt6-tools \
+            kirigami ki18n kconfig kcoreaddons \
+            knotifications kglobalaccel \
+            appstream desktop-file-utils
+
       - uses: actions/checkout@v7
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: desktop-file-validate data/io.github.timpalpant.kanzi.desktop
-      - run: appstreamcli validate --no-net data/io.github.timpalpant.kanzi.metainfo.xml
-      - run: node --check sidecar/main.js && node --check sidecar/preload.js
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && cmake --build build --target all_qmllint
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Validate the desktop entry
+        run: desktop-file-validate data/io.github.timpalpant.kanzi.desktop
+
+      - name: Validate the AppStream metadata
+        # --no-net because the checks that hit the network are flaky in CI and
+        # would fail on URLs that are fine but rate-limited.
+        run: appstreamcli validate --no-net data/io.github.timpalpant.kanzi.metainfo.xml
+
+      - name: Check the sidecar parses
+        run: node --check sidecar/main.js && node --check sidecar/preload.js
+
+      - name: qmllint
+        # Down to a handful of warnings about Loader.item, whose type qmllint
+        # cannot know. The target does not fail on warnings, so this catches
+        # errors; read the log for the rest.
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build --target all_qmllint
 
   format:
+    name: Formatting
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - run: pacman -Syu --noconfirm --needed git clang
+      - name: Install dependencies
+        run: pacman -Syu --noconfirm --needed git clang
+
       - uses: actions/checkout@v7
-      - run: find src tests \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -0 clang-format --dry-run --Werror
+
+      - name: Check clang-format
+        # Style comes from the checked-in .clang-format, so this does not drift
+        # with whichever clang the container happens to pull.
+        run: |
+          find src tests \( -name '*.cpp' -o -name '*.h' \) -print0 \
+            | xargs -0 clang-format --dry-run --Werror
 
   smoke:
+    name: Headless QML load
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - run: pacman -Syu --noconfirm --needed base-devel cmake ninja git qt6-base qt6-declarative kirigami ki18n kcoreaddons kconfig knotifications kglobalaccel qqc2-desktop-style breeze-icons
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel cmake ninja git \
+            qt6-base qt6-declarative \
+            kirigami ki18n kconfig kcoreaddons \
+            knotifications kglobalaccel \
+            qqc2-desktop-style breeze-icons
+
       - uses: actions/checkout@v7
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && cmake --build build
-      - name: Load QML headlessly
+
+      - name: Build
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build
+
+      - name: Load the QML tree
+        # qmllint is static; this catches what only shows up once the engine
+        # actually instantiates the components.
         env:
           QT_QPA_PLATFORM: offscreen
           QT_FORCE_STDERR_LOGGING: '1'
         run: |
           timeout 15 ./build/kanzi > out.log 2>&1 || true
           cat out.log
-          if grep -Eq 'is not a type|Cannot assign|ReferenceError|Binding loop|Cannot create delegate' out.log; then exit 1; fi
+          if grep -Eq 'is not a type|Cannot assign|ReferenceError|Binding loop|Cannot create delegate' out.log; then
+            exit 1
+          fi
+
+  packaging:
+    name: Packaging files
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: pacman -Syu --noconfirm --needed base-devel git pacman-contrib
+
+      - uses: actions/checkout@v7
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Lint the PKGBUILDs
+        run: |
+          useradd -m builder
+          chown -R builder .
+          for dir in packaging/arch/*/; do
+            echo "== $dir"
+            bash -n "$dir/PKGBUILD"
+            su builder -c "cd '$dir' && makepkg --printsrcinfo > /dev/null"
+          done
+
+      # The release package downloads a fixed tarball, so it has to verify it.
+      # SKIP belongs only to kanzi-git, whose source is a git checkout.
+      - name: Check the release tarball is pinned by digest
+        run: |
+          if grep -q "^sha256sums=('SKIP')" packaging/arch/kanzi/PKGBUILD; then
+            echo "::error::packaging/arch/kanzi/PKGBUILD downloads a tarball without checking it"
+            exit 1
+          fi
+
+  deb:
+    name: Debian package
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          # gtk3/nss/alsa are not Kanzi's own dependencies -- they are the
+          # bundled Electron binary's. CPACK_DEBIAN_PACKAGE_SHLIBDEPS scans
+          # every ELF file in the package, Electron included, and only adds a
+          # library to the shipped Depends: if it can resolve which installed
+          # package provides it; installed here for that resolution to work
+          # rather than silently omitting them from the built package.
+          apt-get install -y --no-install-recommends \
+            ca-certificates cmake ninja-build g++ git dpkg-dev file \
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
+            libkf6coreaddons-dev libkf6i18n-dev libkf6config-dev \
+            libkf6notifications-dev libkf6globalaccel-dev libkirigami-dev \
+            libgtk-3-0t64 libnss3 libasound2t64
+
+      - uses: actions/checkout@v7
+
+      # electron requires Node.js 22.12+ (see README); Debian trixie's own
+      # nodejs package is 20.x, so a current Node is installed separately
+      # rather than relying on the distro's.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Without this, CMake silently skips bundling Electron (it only does so
+      # if sidecar/node_modules/electron already exists at configure time),
+      # and this job would keep passing even if that logic broke again.
+      #
+      # electron's package.json has no postinstall: install.js is exposed as
+      # a "bin" script (`install-electron`) meant to be invoked explicitly,
+      # so `npm ci` alone links its metadata but never downloads the ~150MB
+      # platform artifact. install.js is idempotent (a no-op once installed).
+      - name: Install the sidecar
+        run: |
+          npm --prefix sidecar ci
+          node sidecar/node_modules/electron/install.js
+
+      - name: Build the package
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DBUILD_TESTING=OFF
+          cmake --build build
+          cpack --config build/CPackConfig.cmake -G DEB -B "$PWD/dist"
+          for package in dist/*.deb; do sha256sum "$package" > "$package.sha256"; done
+
+      # Regression test for the bundling itself, not just for the build
+      # succeeding: cpack succeeds either way, since CMake only bundles
+      # Electron when it happens to already be present at configure time.
+      - name: Verify Electron is bundled
+        run: |
+          if ! dpkg-deb -c dist/*.deb | grep -q 'node_modules/electron/dist/electron$'; then
+            echo "::error::the .deb does not contain the bundled Electron runtime"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kanzi-deb-package
+          path: |
+            dist/*.deb
+            dist/*.deb.sha256
+          if-no-files-found: error
+
+  rpm:
+    name: RPM package
+    runs-on: ubuntu-latest
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          # gtk3/nss/alsa-lib are not Kanzi's own dependencies -- they are the
+          # bundled Electron binary's, needed here so rpmbuild's automatic
+          # dependency scan can resolve them into the package's Requires:
+          # rather than silently omitting them.
+          dnf -y install \
+            cmake ninja-build gcc-c++ git rpm-build cpio \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+            kf6-kcoreaddons-devel kf6-ki18n-devel kf6-kconfig-devel \
+            kf6-knotifications-devel kf6-kglobalaccel-devel \
+            kf6-kirigami-devel \
+            gtk3 nss alsa-lib
+          dnf clean all
+
+      - uses: actions/checkout@v7
+
+      # electron requires Node.js 22.12+ (see README), pinned explicitly
+      # rather than trusting whatever the distro's nodejs package happens to
+      # carry.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Without this, CMake silently skips bundling Electron (it only does so
+      # if sidecar/node_modules/electron already exists at configure time),
+      # and this job would keep passing even if that logic broke again.
+      #
+      # electron's package.json has no postinstall: install.js is exposed as
+      # a "bin" script (`install-electron`) meant to be invoked explicitly,
+      # so `npm ci` alone links its metadata but never downloads the ~150MB
+      # platform artifact. install.js is idempotent (a no-op once installed).
+      - name: Install the sidecar
+        run: |
+          npm --prefix sidecar ci
+          node sidecar/node_modules/electron/install.js
+
+      - name: Build the package
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DBUILD_TESTING=OFF
+          cmake --build build
+          cpack --config build/CPackConfig.cmake -G RPM -B "$PWD/dist"
+          for package in dist/*.rpm; do sha256sum "$package" > "$package.sha256"; done
+
+      # Regression test for the bundling itself, not just for the build
+      # succeeding: cpack succeeds either way, since CMake only bundles
+      # Electron when it happens to already be present at configure time.
+      - name: Verify Electron is bundled
+        run: |
+          if ! rpm2cpio dist/*.rpm | cpio -t --quiet 2>/dev/null | grep -q 'node_modules/electron/dist/electron$'; then
+            echo "::error::the .rpm does not contain the bundled Electron runtime"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kanzi-rpm-package
+          path: |
+            dist/*.rpm
+            dist/*.rpm.sha256
+          if-no-files-found: error
+
+  flatpak:
+    name: Flatpak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Deliberately not the bilelmoussaoui/flatpak-github-actions container:
+      # its published tags stop at kde-6.7 and this app targets the 6.11
+      # runtime, so that image cannot be pulled. Installing flatpak directly
+      # works for any runtime version.
+      - name: Install flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists --user \
+            kde-runtime https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install the KDE runtime
+        # The Electron BaseApp is what the sidecar's Electron runtime bundles
+        # against; flatpak-builder resolves it from the manifest's `base` key
+        # but does not install it, and it is not part of the KDE runtime.
+        run: |
+          flatpak install --user --noninteractive kde-runtime \
+            org.kde.Platform//6.11 org.kde.Sdk//6.11 \
+            org.electronjs.Electron2.BaseApp//25.08
+
+      - name: Cache the flatpak-builder state
+        uses: actions/cache@v6
+        with:
+          path: .flatpak-builder
+          key: flatpak-builder-${{ hashFiles('packaging/flatpak/*.yml') }}
+          restore-keys: flatpak-builder-
+
+      - name: Build
+        # The CI manifest builds this checkout; the tagged one is for releases.
+        run: |
+          # download.kde.org selects a public mirror, which occasionally
+          # times out on hosted runners. Retry transient source/build failures
+          # but still fail the job after three unsuccessful attempts.
+          for attempt in 1 2 3; do
+            if flatpak-builder --user --disable-rofiles-fuse --force-clean \
+              --repo=flatpak-repo build-flatpak \
+              packaging/flatpak/io.github.timpalpant.kanzi.ci.yml; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              exit 1
+            fi
+            echo "Flatpak build attempt $attempt failed; retrying in 15 seconds."
+            sleep 15
+          done
+
+      - name: Create the bundle
+        run: |
+          flatpak build-bundle flatpak-repo kanzi.flatpak \
+            io.github.timpalpant.kanzi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kanzi-flatpak
+          path: kanzi.flatpak
+          if-no-files-found: error

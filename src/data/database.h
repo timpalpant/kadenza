@@ -10,28 +10,29 @@
  * Recently Added views can be rendered from disk immediately, instead of
  * waiting for every page of a paginated API walk.
  */
-class Database {
+class Database
+{
 public:
-  static Database &instance();
+    static Database &instance();
 
-  bool open(const QString &path = {});
-  void close();
+    bool open(const QString &path = {});
+    void close();
 
-  [[nodiscard]] QSqlDatabase db() const;
-  [[nodiscard]] bool isOpen() const;
+    [[nodiscard]] QSqlDatabase db() const;
+    [[nodiscard]] bool isOpen() const;
 
-  /// Drops every cached resource and its sync bookkeeping, used on sign-out.
-  void wipe();
+    /// Drops every cached resource and its sync bookkeeping, used on sign-out.
+    void wipe();
 
-  [[nodiscard]] QString lastError() const { return m_lastError; }
+    [[nodiscard]] QString lastError() const { return m_lastError; }
 
 private:
-  Database() = default;
-  bool createSchema();
-  int schemaVersion();
-  void setSchemaVersion(int version);
+    Database() = default;
+    bool createSchema();
+    int schemaVersion();
+    void setSchemaVersion(int version);
 
-  QString m_connectionName = QStringLiteral("kanzi");
-  QString m_lastError;
-  bool m_open = false;
+    QString m_connectionName = QStringLiteral("kanzi");
+    QString m_lastError;
+    bool m_open = false;
 };

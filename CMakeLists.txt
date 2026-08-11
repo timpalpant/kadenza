@@ -101,9 +101,15 @@ install(FILES data/kanzi.notifyrc
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/knotifications6)
 install(FILES sidecar/main.js sidecar/preload.js sidecar/package.json sidecar/package-lock.json
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kanzi/sidecar)
+# Only dist/, not the whole npm package: locateElectron() (playercontroller.cpp)
+# execs node_modules/electron/dist/electron directly and never touches the
+# package's own cli.js, install.js, docs, or vmp-resign.py. Bundling those
+# unused files broke RPM packaging outright -- Fedora's build policy hard-
+# rejects vmp-resign.py's ambiguous "#!/usr/bin/env python" shebang -- for
+# files nothing ever runs.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sidecar/node_modules/electron/dist/electron")
-    install(DIRECTORY sidecar/node_modules/electron
-            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kanzi/sidecar/node_modules
+    install(DIRECTORY sidecar/node_modules/electron/dist
+            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kanzi/sidecar/node_modules/electron
             USE_SOURCE_PERMISSIONS)
 endif()
 
@@ -114,12 +120,35 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Apple Music client for KDE Plasma"
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
 set(CPACK_DEBIAN_PACKAGE_SECTION "sound")
+# Not nodejs: the bundled Electron is self-contained (it embeds its own Node
+# runtime), and Kanzi execs it directly by absolute path rather than through a
+# system node/npm.
+# qml6-module-org-kde-desktop provides the "org.kde.desktop" QQC2 style
+# main.cpp always selects unless QT_QUICK_CONTROLS_STYLE is already set --
+# without it the QML engine refuses to load at all, confirmed by installing
+# this .deb in a bare debian:trixie container with none of Kanzi's own
+# dependencies pre-satisfied by a desktop environment.
+#
+# qt6-svg-plugins is the QImageReader plugin the demo library's placeholder
+# artwork (data/demo/*.svg) needs to decode at all -- Arch never surfaces this
+# gap because qt6-svg is already a dependency of kirigami there, but Debian
+# does not pull it in transitively the same way.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "nodejs, qml6-module-qtcore, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-org-kde-kirigami, libqt6sql6-sqlite, libkf6notifications6, libkf6globalaccel6")
+    "qml6-module-qtcore, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-org-kde-kirigami, qml6-module-org-kde-desktop, qt6-svg-plugins, libqt6sql6-sqlite, libkf6notifications6, libkf6globalaccel6")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_RPM_PACKAGE_LICENSE "GPL-3.0-or-later")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Multimedia")
-set(CPACK_RPM_PACKAGE_REQUIRES "nodejs, qt6-qtdeclarative, qt6-qtbase-sqlite, kf6-kirigami, kf6-knotifications, kf6-kglobalaccel")
+# Not nodejs: see the matching note above CPACK_DEBIAN_PACKAGE_DEPENDS.
+# kf6-qqc2-desktop-style is the Fedora name for the same "org.kde.desktop"
+# style covered by qml6-module-org-kde-desktop on Debian, above.
+# qt6-qtbase-sqlite is not a real Fedora package -- Fedora bundles the SQLite
+# Qt driver directly in qt6-qtbase, which qt6-qtdeclarative already requires;
+# that bogus name aborted every `dnf install` of this package outright,
+# confirmed by installing this .rpm in a bare Fedora container.
+# qt6-qtsvg is the SVG imageformats plugin the demo library's placeholder
+# artwork (data/demo/*.svg) needs to decode at all; see the matching note
+# above CPACK_DEBIAN_PACKAGE_DEPENDS.
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtdeclarative, kf6-kirigami, kf6-knotifications, kf6-kglobalaccel, kf6-qqc2-desktop-style, qt6-qtsvg")
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 include(CPack)

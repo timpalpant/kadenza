@@ -9,13 +9,26 @@ permissions:
 
 jobs:
   verify:
+    name: Verify the tag
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - run: pacman -Syu --noconfirm --needed base-devel cmake ninja git qt6-base qt6-declarative qt6-tools kirigami ki18n kcoreaddons kconfig appstream
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel cmake ninja git \
+            qt6-base qt6-declarative qt6-tools \
+            kirigami ki18n kconfig kcoreaddons \
+            knotifications kglobalaccel appstream
+
       - uses: actions/checkout@v7
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Verify version and build
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Verify the version and build
+        # A tag that disagrees with the project version or the AppStream
+        # release notes would ship a package labelled with the wrong version.
         run: |
           tag="${GITHUB_REF_NAME#v}"
           project=$(grep -oP 'project\(kanzi VERSION \K[0-9.]+' CMakeLists.txt)
@@ -26,30 +39,315 @@ jobs:
           ctest --test-dir build --output-on-failure --no-tests=error
 
   source:
+    name: Source archive
     needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - name: Create source archive
+
+      - name: Create the source archive
+        # This is the tarball the release PKGBUILD downloads, so its digest is
+        # published alongside it.
         run: |
           name="kanzi-${GITHUB_REF_NAME#v}"
           git archive --format=tar.gz --prefix="$name/" -o "$name.tar.gz" "$GITHUB_REF_NAME"
           sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+
       - uses: actions/upload-artifact@v7
         with:
           name: source
           path: kanzi-*.tar.gz*
+          if-no-files-found: error
+
+  archpkg:
+    name: Arch package
+    needs: verify
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel cmake ninja git pacman-contrib sudo \
+            qt6-base qt6-declarative qt6-tools \
+            kirigami ki18n kconfig kcoreaddons \
+            knotifications kglobalaccel
+
+      - uses: actions/checkout@v7
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Uses the release PKGBUILD with its source repointed at this checkout.
+      # electron43-castlab-bin, the package's one remaining dependency, comes
+      # from AUR rather than the official repos preinstalled above, so plain
+      # pacman cannot resolve it inside this container. Build dependencies are
+      # preinstalled and only that dependency's resolution is skipped.
+      - name: Build the package
+        run: ./packaging/build-arch-package.sh --nodeps --outdir "$PWD/dist"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch-package
+          path: |
+            dist/*.pkg.tar.zst
+            dist/*.pkg.tar.zst.sha256
+          if-no-files-found: error
+
+  deb:
+    name: Debian package
+    needs: verify
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          # gtk3/nss/alsa are not Kanzi's own dependencies -- they are the
+          # bundled Electron binary's. CPACK_DEBIAN_PACKAGE_SHLIBDEPS scans
+          # every ELF file in the package, Electron included, and only adds a
+          # library to the shipped Depends: if it can resolve which installed
+          # package provides it; installed here for that resolution to work
+          # rather than silently omitting them from the built package.
+          apt-get install -y --no-install-recommends \
+            ca-certificates cmake ninja-build g++ git dpkg-dev file \
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
+            libkf6coreaddons-dev libkf6i18n-dev libkf6config-dev \
+            libkf6notifications-dev libkf6globalaccel-dev libkirigami-dev \
+            libgtk-3-0t64 libnss3 libasound2t64
+
+      - uses: actions/checkout@v7
+
+      # electron requires Node.js 22.12+ (see README); Debian trixie's own
+      # nodejs package is 20.x, so a current Node is installed separately
+      # rather than relying on the distro's.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # CMake only bundles sidecar/node_modules/electron into the package if
+      # it exists at configure time. Without this, the .deb silently shipped
+      # with no Electron runtime and nothing to pull one in -- Kanzi's binary
+      # execs it directly rather than through a system node/npm, so there was
+      # no dependency that would have caught this at install time either.
+      #
+      # electron's package.json has no postinstall: install.js is exposed as
+      # a "bin" script (`install-electron`) meant to be invoked explicitly,
+      # so `npm ci` alone links its metadata but never downloads the ~150MB
+      # platform artifact. install.js is idempotent (a no-op once installed).
+      - name: Install the sidecar
+        run: |
+          npm --prefix sidecar ci
+          node sidecar/node_modules/electron/install.js
+
+      - name: Build the package
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DBUILD_TESTING=OFF
+          cmake --build build
+          cpack --config build/CPackConfig.cmake -G DEB -B "$PWD/dist"
+          for package in dist/*.deb; do sha256sum "$package" > "$package.sha256"; done
+
+      # Regression test for the bundling itself, not just for the build
+      # succeeding: cpack succeeds either way, since CMake only bundles
+      # Electron when it happens to already be present at configure time.
+      - name: Verify Electron is bundled
+        run: |
+          if ! dpkg-deb -c dist/*.deb | grep -q 'node_modules/electron/dist/electron$'; then
+            echo "::error::the .deb does not contain the bundled Electron runtime"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb-package
+          path: |
+            dist/*.deb
+            dist/*.deb.sha256
+          if-no-files-found: error
+
+  rpm:
+    name: RPM package
+    needs: verify
+    runs-on: ubuntu-latest
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          # gtk3/nss/alsa-lib are not Kanzi's own dependencies -- they are the
+          # bundled Electron binary's, needed here so rpmbuild's automatic
+          # dependency scan can resolve them into the package's Requires:
+          # rather than silently omitting them.
+          dnf -y install \
+            cmake ninja-build gcc-c++ git rpm-build cpio \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+            kf6-kcoreaddons-devel kf6-ki18n-devel kf6-kconfig-devel \
+            kf6-knotifications-devel kf6-kglobalaccel-devel \
+            kf6-kirigami-devel \
+            gtk3 nss alsa-lib
+          dnf clean all
+
+      - uses: actions/checkout@v7
+
+      # electron requires Node.js 22.12+ (see README), pinned explicitly
+      # rather than trusting whatever the distro's nodejs package happens to
+      # carry.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # CMake only bundles sidecar/node_modules/electron into the package if
+      # it exists at configure time. Without this, the .rpm silently shipped
+      # with no Electron runtime and nothing to pull one in -- Kanzi's binary
+      # execs it directly rather than through a system node/npm, so there was
+      # no dependency that would have caught this at install time either.
+      #
+      # electron's package.json has no postinstall: install.js is exposed as
+      # a "bin" script (`install-electron`) meant to be invoked explicitly,
+      # so `npm ci` alone links its metadata but never downloads the ~150MB
+      # platform artifact. install.js is idempotent (a no-op once installed).
+      - name: Install the sidecar
+        run: |
+          npm --prefix sidecar ci
+          node sidecar/node_modules/electron/install.js
+
+      - name: Build the package
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DBUILD_TESTING=OFF
+          cmake --build build
+          cpack --config build/CPackConfig.cmake -G RPM -B "$PWD/dist"
+          for package in dist/*.rpm; do sha256sum "$package" > "$package.sha256"; done
+
+      # Regression test for the bundling itself, not just for the build
+      # succeeding: cpack succeeds either way, since CMake only bundles
+      # Electron when it happens to already be present at configure time.
+      - name: Verify Electron is bundled
+        run: |
+          if ! rpm2cpio dist/*.rpm | cpio -t --quiet 2>/dev/null | grep -q 'node_modules/electron/dist/electron$'; then
+            echo "::error::the .rpm does not contain the bundled Electron runtime"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rpm-package
+          path: |
+            dist/*.rpm
+            dist/*.rpm.sha256
+          if-no-files-found: error
+
+  flatpak:
+    name: Flatpak
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Deliberately not the bilelmoussaoui/flatpak-github-actions container:
+      # its published tags stop at kde-6.7 and this app targets the 6.11
+      # runtime, so that image cannot be pulled.
+      - name: Install flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists --user \
+            kde-runtime https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install the KDE runtime
+        # The Electron BaseApp is what the sidecar's Electron runtime bundles
+        # against; flatpak-builder resolves it from the manifest's `base` key
+        # but does not install it, and it is not part of the KDE runtime.
+        run: |
+          flatpak install --user --noninteractive kde-runtime \
+            org.kde.Platform//6.11 org.kde.Sdk//6.11 \
+            org.electronjs.Electron2.BaseApp//25.08
+
+      - name: Build
+        # The tagged manifest, not the CI one: a release ships what the tag says.
+        run: |
+          for attempt in 1 2 3; do
+            if flatpak-builder --user --disable-rofiles-fuse --force-clean \
+              --repo=flatpak-repo build-flatpak \
+              packaging/flatpak/io.github.timpalpant.kanzi.yml; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              exit 1
+            fi
+            echo "Flatpak build attempt $attempt failed; retrying in 15 seconds."
+            sleep 15
+          done
+
+      - name: Create the bundle
+        run: |
+          flatpak build-bundle flatpak-repo kanzi.flatpak \
+            io.github.timpalpant.kanzi
+          sha256sum kanzi.flatpak > kanzi.flatpak.sha256
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak-bundle
+          path: kanzi.flatpak*
+          if-no-files-found: error
 
   publish:
-    needs: source
+    name: Publish the release
+    needs: [source, archpkg, deb, rpm, flatpak]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
-        with: { name: source }
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List what will be published
+        run: ls -la artifacts
+
       - uses: softprops/action-gh-release@v2
         with:
+          # Drafted rather than published: the release PKGBUILD checksum must
+          # be recorded before the release is announced.
           draft: true
           generate_release_notes: true
-          files: kanzi-*.tar.gz*
+          files: artifacts/*
+          body: |
+            ### Install
 
+            **Arch Linux** — install the attached package directly:
+
+            ```sh
+            sudo pacman -U kanzi-*.pkg.tar.zst
+            ```
+
+            **Debian / Ubuntu** — download the attached `.deb`, then:
+
+            ```sh
+            sudo apt install ./kanzi_*.deb
+            ```
+
+            **Fedora / RPM-based** — download the attached `.rpm`, then:
+
+            ```sh
+            sudo dnf install ./kanzi-*.rpm
+            ```
+
+            **Flatpak** — download `kanzi.flatpak`, then:
+
+            ```sh
+            flatpak install --user kanzi.flatpak
+            flatpak run io.github.timpalpant.kanzi
+            ```
+
+            **From source** — `kanzi-*.tar.gz` is the release tarball used by
+            the release PKGBUILD. A `.sha256` accompanies every artifact.
+
+            An active Apple Music subscription is required. Kanzi is an
+            unofficial client and is not affiliated with or endorsed by Apple.
