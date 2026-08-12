@@ -183,9 +183,27 @@ QQC2.ItemDelegate {
             icon.name: "application-menu"
             text: i18n("More Options")
             display: QQC2.AbstractButton.IconOnly
-            onClicked: menu.popup()
-            QQC2.Menu {
-                id: menu
+            onClicked: menuLoader.popup()
+            // Eleven controls wrapped in a Popup, built for every row in the
+            // list whether or not the overflow button is ever pressed. On
+            // long track lists that cost more than the rows themselves, so
+            // the menu is built on first use instead.
+            Loader {
+                id: menuLoader
+                active: false
+                sourceComponent: menuComponent
+                onLoaded: item.popup()
+                function popup() {
+                    if (active) {
+                        item.popup();
+                    } else {
+                        active = true; // onLoaded pops it
+                    }
+                }
+            }
+            Component {
+                id: menuComponent
+                QQC2.Menu {
                 QQC2.MenuItem {
                     text: i18n("Play Next")
                     enabled: root.playable
@@ -242,7 +260,10 @@ QQC2.ItemDelegate {
                 QQC2.MenuItem {
                     visible: root.queueMode
                     text: i18n("Move Down")
-                    enabled: ListView.view && root.index < ListView.view.count - 1
+                    // Attached on the delegate root, not here: ListView only
+                    // attaches to the item it instantiates.
+                    enabled: root.ListView.view
+                             && root.index < root.ListView.view.count - 1
                     onTriggered: App.player.moveQueueItem(root.index, root.index + 1)
                 }
                 QQC2.MenuItem {
@@ -260,6 +281,7 @@ QQC2.ItemDelegate {
                     text: i18n("Open")
                     visible: !root.song
                     onTriggered: root.openRequested()
+                }
                 }
             }
         }

@@ -26,6 +26,17 @@ Item {
     readonly property bool masked: GraphicsInfo.api !== GraphicsInfo.Software
     readonly property int status: artwork.item ? artwork.item.status : Image.Null
 
+    // Artwork URLs are always requested at 512px (MediaItem::artwork), which a
+    // grid tile a fifth of that size then pays for twice over: the JPEG is
+    // decoded at full size and uploaded as a 512² texture. Handing the decoder
+    // a target size lets it scale during decode instead, which for JPEG is
+    // most of the work saved. Quantised so that dragging the artwork-size
+    // slider does not re-decode every picture on every frame.
+    readonly property int decodeSize: {
+        const drawn = Math.max(width, height) * Screen.devicePixelRatio;
+        return Math.max(64, Math.min(512, Math.ceil(drawn / 64) * 64));
+    }
+
     implicitWidth: Kirigami.Units.iconSizes.huge
     implicitHeight: implicitWidth
 
@@ -43,6 +54,8 @@ Item {
             // The placeholder in front covers this until the picture arrives.
             color: "transparent"
             asynchronous: true
+            sourceSize.width: root.decodeSize
+            sourceSize.height: root.decodeSize
             // Left at the default stretch: artwork is always requested square
             // (MediaItem::artwork), and PreserveAspectCrop would paint outside
             // the bounds the mask is built from.
@@ -56,6 +69,8 @@ Item {
             asynchronous: true
             cache: true
             fillMode: Image.PreserveAspectCrop
+            sourceSize.width: root.decodeSize
+            sourceSize.height: root.decodeSize
         }
     }
 

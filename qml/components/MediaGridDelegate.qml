@@ -30,53 +30,74 @@ QQC2.ItemDelegate {
     height: GridView.view ? GridView.view.cellHeight : Kirigami.Units.gridUnit * 13
     padding: Kirigami.Units.smallSpacing
     onClicked: openRequested()
-    onPressAndHold: menu.popup()
+    onPressAndHold: menuLoader.popup()
     TapHandler {
         acceptedButtons: Qt.RightButton
-        onTapped: menu.popup()
+        onTapped: menuLoader.popup()
     }
 
-    QQC2.Menu {
-        id: menu
-        QQC2.MenuItem {
-            text: i18n("Play")
-            icon.name: "media-playback-start"
-            visible: root.playableCollection
-            onTriggered: root.playRequested()
+    // A tile's context menu is a Popup carrying its own panel, background and
+    // one control per entry — more to build than everything else in the tile
+    // combined, for something most tiles never show. Artist detail lays out
+    // every row of every shelf at once (see DetailPage's ArtistShelf), so
+    // eagerly building these dominated the page's load. Build on first use.
+    Loader {
+        id: menuLoader
+        active: false
+        sourceComponent: menuComponent
+        onLoaded: item.popup()
+        function popup() {
+            if (active) {
+                item.popup();
+            } else {
+                active = true; // onLoaded pops it
+            }
         }
-        QQC2.MenuItem {
-            text: i18n("Open")
-            onTriggered: root.openRequested()
-        }
-        QQC2.MenuSeparator { visible: root.ratable }
-        QQC2.MenuItem {
-            visible: root.ratable
-            text: root.rating > 0 ? i18n("Loved") : i18n("Love")
-            icon.name: "love"
-            checkable: true
-            checked: root.rating > 0
-            onTriggered: App.setRating(root.catalogId || root.mediaId,
-                                       root.mediaType, root.rating > 0 ? 0 : 1)
-        }
-        QQC2.MenuItem {
-            visible: root.ratable
-            text: root.rating < 0 ? i18n("Disliked") : i18n("Dislike")
-            icon.name: "dialog-cancel"
-            checkable: true
-            checked: root.rating < 0
-            onTriggered: App.setRating(root.catalogId || root.mediaId,
-                                       root.mediaType, root.rating < 0 ? 0 : -1)
-        }
-        QQC2.MenuSeparator { visible: root.ratable }
-        QQC2.MenuItem {
-            visible: root.mediaType.indexOf("playlist") < 0
-            text: root.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
-            onTriggered: App.setFavorite(root.catalogId || root.mediaId, root.mediaType, !root.favorite)
-        }
-        QQC2.MenuItem {
-            visible: root.mediaType.indexOf("playlist") < 0
-            text: root.inLibrary ? i18n("Remove from Library") : i18n("Add to Library")
-            onTriggered: App.setInLibrary(root.inLibrary ? root.mediaId : (root.catalogId || root.mediaId), root.mediaType, !root.inLibrary)
+    }
+
+    Component {
+        id: menuComponent
+        QQC2.Menu {
+            QQC2.MenuItem {
+                text: i18n("Play")
+                icon.name: "media-playback-start"
+                visible: root.playableCollection
+                onTriggered: root.playRequested()
+            }
+            QQC2.MenuItem {
+                text: i18n("Open")
+                onTriggered: root.openRequested()
+            }
+            QQC2.MenuSeparator { visible: root.ratable }
+            QQC2.MenuItem {
+                visible: root.ratable
+                text: root.rating > 0 ? i18n("Loved") : i18n("Love")
+                icon.name: "love"
+                checkable: true
+                checked: root.rating > 0
+                onTriggered: App.setRating(root.catalogId || root.mediaId,
+                                           root.mediaType, root.rating > 0 ? 0 : 1)
+            }
+            QQC2.MenuItem {
+                visible: root.ratable
+                text: root.rating < 0 ? i18n("Disliked") : i18n("Dislike")
+                icon.name: "dialog-cancel"
+                checkable: true
+                checked: root.rating < 0
+                onTriggered: App.setRating(root.catalogId || root.mediaId,
+                                           root.mediaType, root.rating < 0 ? 0 : -1)
+            }
+            QQC2.MenuSeparator { visible: root.ratable }
+            QQC2.MenuItem {
+                visible: root.mediaType.indexOf("playlist") < 0
+                text: root.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
+                onTriggered: App.setFavorite(root.catalogId || root.mediaId, root.mediaType, !root.favorite)
+            }
+            QQC2.MenuItem {
+                visible: root.mediaType.indexOf("playlist") < 0
+                text: root.inLibrary ? i18n("Remove from Library") : i18n("Add to Library")
+                onTriggered: App.setInLibrary(root.inLibrary ? root.mediaId : (root.catalogId || root.mediaId), root.mediaType, !root.inLibrary)
+            }
         }
     }
 
