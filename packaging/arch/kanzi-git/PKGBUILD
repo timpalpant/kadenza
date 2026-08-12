@@ -8,21 +8,33 @@ pkgdesc="Native Apple Music client for KDE Plasma (development version)"
 arch=('x86_64')
 url="https://github.com/timpalpant/kanzi"
 license=('GPL-3.0-or-later')
-# electron43-castlab-bin is a Widevine-enabled Electron build, required for
-# DRM-protected playback. A vanilla Electron has no CDM and would silently
-# fall back to 30-second previews instead of failing to build. Keep this in
-# lockstep with sidecar/package.json's pinned Electron version and with
-# kSystemElectron in src/player/playercontroller.cpp -- Kanzi looks for this
-# exact package name on PATH when nothing is bundled alongside it.
+# Bundles a Widevine-enabled Electron build (MIT-licensed, from
+# https://github.com/castlabs/electron-releases, pinned in
+# sidecar/package.json), same as the .deb, .rpm and Flatpak. A vanilla
+# Electron has no CDM and would silently fall back to 30-second previews
+# instead of failing to build. This used to instead depend on the AUR package
+# electron43-castlab-bin, but that package's own launcher script has a
+# packaging bug (an unsubstituted "@ELECTRON@" template placeholder) that
+# makes it fail on every launch, so Kanzi now bundles its own copy rather
+# than depending on a broken upstream package.
+#
+# gtk3 and nss are not Kanzi's own dependencies -- they are the bundled
+# Electron binary's. Unlike the .deb/.rpm builds, nothing here scans the
+# bundled binary's own linked libraries automatically, so they have to be
+# declared by hand; confirmed via `ldd` on the bundled binary in a bare
+# container with nothing pre-satisfied by a desktop environment. (gtk3 itself
+# already pulls in cairo, pango, at-spi2-core and the X11 libs Electron also
+# needs.)
+#
 # qqc2-desktop-style is not merely cosmetic: main.cpp always selects the
 # "org.kde.desktop" QQC2 style unless QT_QUICK_CONTROLS_STYLE is already set,
 # and without it the QML engine refuses to load at all -- confirmed by
 # installing the .deb equivalent of this package in a bare container with
 # nothing pre-satisfied by a desktop environment.
 depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig'
-         'knotifications' 'kglobalaccel' 'glibc' 'electron43-castlab-bin'
-         'qqc2-desktop-style')
-makedepends=('cmake' 'ninja' 'git')
+         'knotifications' 'kglobalaccel' 'glibc' 'qqc2-desktop-style' 'gtk3'
+         'nss')
+makedepends=('cmake' 'ninja' 'git' 'nodejs' 'npm')
 provides=("$_pkgname=$pkgver")
 conflicts=("$_pkgname")
 source=("$_pkgname::git+$url.git")
@@ -32,6 +44,15 @@ pkgver() {
   cd "$_pkgname"
   git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' \
     || printf "0.0.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+# See the release PKGBUILD: install.js has to be invoked explicitly and has
+# to run before build(), since CMake only bundles Electron if it already
+# exists at configure time.
+prepare() {
+  cd "$_pkgname"
+  npm --prefix sidecar ci --allow-git=all
+  node sidecar/node_modules/electron/install.js
 }
 
 build() {

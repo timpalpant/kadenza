@@ -40,6 +40,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.2" date="2026-08-12">
+      <description><p>Bundle Electron in the Arch package instead of
+      depending on the AUR package electron43-castlab-bin, whose launcher
+      script fails on every launch due to an upstream packaging bug.</p></description>
+    </release>
     <release version="0.1.1" date="2026-08-12">
       <description><p>Fix the Arch package looking for the wrong Electron
       binary name on PATH, so playback failed even with the dependency

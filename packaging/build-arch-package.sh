@@ -105,10 +105,10 @@ printf "\noptions=('!debug')\n" >> PKGBUILD
 # ---------------------------------------------------------------------------
 # -s installs missing dependencies, -f overwrites a previous build of the same
 # version. Debug packages are off: they double the build time and nothing
-# consumes them here. CI preinstalls build dependencies and uses --nodeps
-# because electron43-castlab-bin is a Widevine-enabled Electron build supplied
-# by AUR, not by the official Arch repositories, so plain pacman cannot resolve
-# it as a build dependency inside a clean container.
+# consumes them here. --nodeps is for callers who have already preinstalled
+# every dependency and want to skip the (network) resolution check; every
+# dependency now comes from the official Arch repositories, so it is not
+# needed by default.
 makepkg_args=(-sf --noconfirm --noprogressbar)
 if [[ "$skip_dependency_check" == true ]]; then
     makepkg_args+=(--nodeps)

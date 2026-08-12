@@ -66,10 +66,12 @@ overrides sidecar discovery.
 Kanzi looks for its Widevine-enabled Electron runtime in three places, in
 order: `KANZI_ELECTRON=/path/to/electron`, the sidecar's own bundled copy
 (`npm --prefix sidecar install`, above), and `electron43-castlab` on `PATH`
-(the binary installed by the AUR package `electron43-castlab-bin`). The Arch
-package depends on that AUR package instead of bundling a second ~150MB copy;
-the .deb, .rpm and Flatpak still bundle it, since none of those ecosystems
-have an equivalent shared package.
+(the binary installed by the AUR package `electron43-castlab-bin`). Every
+released package -- Arch, .deb, .rpm and Flatpak -- bundles its own copy
+rather than depending on that AUR package: its launcher script has an
+upstream packaging bug (an unsubstituted template placeholder) that makes it
+fail on every launch, so the PATH lookup is really just a fallback for
+source builds.
 
 `KANZI_TRACE=1` echoes the sidecar protocol to stderr, `>>` for commands Kanzi
 sends and `<<` for events it receives. The two directions are separate pipes,
