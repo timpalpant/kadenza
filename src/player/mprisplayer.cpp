@@ -35,7 +35,7 @@ MprisPlayerAdaptor::MprisPlayerAdaptor(PlayerController *player, QObject *parent
 {
     // A Qt NOTIFY signal is not what D-Bus clients listen to. Nothing turns it
     // into org.freedesktop.DBus.Properties.PropertiesChanged on its own, so
-    // Plasma's media applet read the properties once when Kanzi appeared on the
+    // Plasma's media applet read the properties once when Kadenza appeared on the
     // bus and was never told about anything afterwards: no track, no progress,
     // dead buttons. Each change now announces exactly what it touched.
     connect(player, &PlayerController::playbackChanged, this, [this] { announce({{QStringLiteral("PlaybackStatus"), playbackStatus()}}); });
@@ -126,8 +126,8 @@ QDBusObjectPath MprisPlayerAdaptor::trackId() const
         path += usable ? character : QLatin1Char('_');
     }
     if (path.isEmpty())
-        return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kanzi/none"));
-    return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kanzi/track/") + path);
+        return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kadenza/none"));
+    return QDBusObjectPath(QStringLiteral("/io/github/timpalpant/kadenza/track/") + path);
 }
 
 QVariantMap MprisPlayerAdaptor::metadata() const
@@ -188,7 +188,7 @@ MprisPlayer::MprisPlayer(PlayerController *player, QObject *parent)
     new MprisPlayerAdaptor(player, this);
     auto bus = QDBusConnection::sessionBus();
     if (!bus.registerObject(QStringLiteral("/org/mpris/MediaPlayer2"), this, QDBusConnection::ExportAdaptors))
-        qWarning() << "Could not export the Kanzi MPRIS object:" << bus.lastError();
-    if (!bus.registerService(QStringLiteral("org.mpris.MediaPlayer2.kanzi")))
-        qWarning() << "Could not register the Kanzi MPRIS service:" << bus.lastError();
+        qWarning() << "Could not export the Kadenza MPRIS object:" << bus.lastError();
+    if (!bus.registerService(QStringLiteral("org.mpris.MediaPlayer2.kadenza")))
+        qWarning() << "Could not register the Kadenza MPRIS service:" << bus.lastError();
 }

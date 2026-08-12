@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Miguel Rincon
-// SPDX-FileCopyrightText: 2026 the Kanzi authors
+// SPDX-FileCopyrightText: 2026 the Kadenza authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Derived from Slipmat's sidecar. Electron is visible only while Apple's own
@@ -12,14 +12,14 @@ const path = require('node:path')
 const readline = require('node:readline')
 
 const APPLE_MUSIC = 'https://music.apple.com/'
-const PARTITION = 'persist:kanzi'
-const DEBUG = process.env.KANZI_SHOW_SIDECAR === '1'
+const PARTITION = 'persist:kadenza'
+const DEBUG = process.env.KADENZA_SHOW_SIDECAR === '1'
 const READY_TIMEOUT_MS = 60000
 const PROBE_INTERVAL_MS = 500
 const TOKEN_NUDGES = 10
 
-app.setName('Kanzi')
-if (process.platform === 'linux') app.setDesktopName('io.github.timpalpant.kanzi.desktop')
+app.setName('Kadenza')
+if (process.platform === 'linux') app.setDesktopName('io.github.timpalpant.kadenza.desktop')
 app.commandLine.appendSwitch('disable-features', 'MediaSessionService,HardwareMediaKeyHandling')
 app.commandLine.appendSwitch('disk-cache-size', String(200 * 1024 * 1024))
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -40,19 +40,19 @@ let signInRequested = false
 let sessionSettled = false
 const authWindows = new Set()
 
-// Both pipes belong to Kanzi, so both break the moment it goes away. Node
+// Both pipes belong to Kadenza, so both break the moment it goes away. Node
 // raises EPIPE on the next write, and an uncaught one in Electron's main
 // process puts a modal "A JavaScript error occurred" dialog on screen — from a
 // helper the user cannot see and about a parent that no longer exists.
 function send(message) {
   try {
     process.stdout.write(JSON.stringify(message) + '\n')
-  } catch { /* Kanzi is gone; the shutdown path below handles it */ }
+  } catch { /* Kadenza is gone; the shutdown path below handles it */ }
 }
 
 function log(...parts) {
   try {
-    process.stderr.write('[kanzi-sidecar] ' + parts.join(' ') + '\n')
+    process.stderr.write('[kadenza-sidecar] ' + parts.join(' ') + '\n')
   } catch { /* nowhere left to log to */ }
 }
 
@@ -92,7 +92,7 @@ async function createWindow() {
     show: DEBUG,
     width: 1000,
     height: 720,
-    title: 'Sign in to Apple Music — Kanzi',
+    title: 'Sign in to Apple Music — Kadenza',
     autoHideMenuBar: true,
     skipTaskbar: !DEBUG,
     webPreferences: {
@@ -119,7 +119,7 @@ async function createWindow() {
           show: true,
           width: 520,
           height: 720,
-          title: 'Sign in to Apple Music — Kanzi',
+          title: 'Sign in to Apple Music — Kadenza',
           autoHideMenuBar: true,
           webPreferences: { partition: PARTITION },
         },
@@ -131,7 +131,7 @@ async function createWindow() {
   win.webContents.on('did-create-window', child => {
     authWindows.add(child)
     child.setMenuBarVisibility(false)
-    child.setTitle('Sign in to Apple Music — Kanzi')
+    child.setTitle('Sign in to Apple Music — Kadenza')
     child.webContents.on('will-navigate', (event, url) => {
       if (!allowed(url)) {
         event.preventDefault()
@@ -231,11 +231,11 @@ function probeForMusicKit() {
     if (win.webContents.isLoadingMainFrame()) return
     try {
       const ready = await win.webContents.executeJavaScript(
-        'window.__kanziReady ? window.__kanziReady() : false',
+        'window.__kadenzaReady ? window.__kadenzaReady() : false',
       )
       if (ready) {
         clearInterval(probeTimer)
-        win.webContents.send('kanzi:wire')
+        win.webContents.send('kadenza:wire')
       }
     } catch (error) {
       log('probe failed:', error && error.message)
@@ -244,7 +244,7 @@ function probeForMusicKit() {
 }
 
 async function signOut() {
-  if (win && !win.isDestroyed()) win.webContents.send('kanzi:command', { cmd: 'unauthorize' })
+  if (win && !win.isDestroyed()) win.webContents.send('kadenza:command', { cmd: 'unauthorize' })
   try {
     await session.fromPartition(PARTITION).clearStorageData({
       storages: ['cookies', 'localstorage', 'sessionstorage', 'indexdb', 'websql', 'serviceworkers', 'cachestorage'],
@@ -287,7 +287,7 @@ function dispatch(message) {
     send({ event: 'cmd-queued', cmd: message.cmd, depth: pending.length })
     return
   }
-  win.webContents.send('kanzi:command', message)
+  win.webContents.send('kadenza:command', message)
 }
 
 // MusicKit rehydrates a previously authorized session from the persisted
@@ -308,7 +308,7 @@ function beginSessionRestore() {
       clearInterval(tokenTimer)
       return void reauthorizeSavedSession()
     }
-    win.webContents.send('kanzi:command', { cmd: 'restoreAuthorization' })
+    win.webContents.send('kadenza:command', { cmd: 'restoreAuthorization' })
   }, 1000)
 }
 
@@ -318,7 +318,7 @@ function beginSessionRestore() {
 // Re-running authorize() lets Apple exchange those cookies for a token: it
 // completes without interaction while the saved session is valid, and shows
 // Apple's own window if it is not. Skipped entirely when nothing was ever
-// signed in, so a first run goes straight to Kanzi's sign-in page.
+// signed in, so a first run goes straight to Kadenza's sign-in page.
 async function reauthorizeSavedSession() {
   if (signInRequested || sessionSettled || !win || win.isDestroyed()) return
   let previouslySignedIn = false
@@ -334,13 +334,13 @@ async function reauthorizeSavedSession() {
     return send({ event: 'session-restore-failed', detail: 'No saved Apple Music session' })
   }
   send({ event: 'session-reauthorizing' })
-  win.webContents.send('kanzi:command', { cmd: 'authorize' })
+  win.webContents.send('kadenza:command', { cmd: 'authorize' })
 }
 
 function drainPending() {
   const queued = pending
   pending = []
-  for (const message of queued) win.webContents.send('kanzi:command', message)
+  for (const message of queued) win.webContents.send('kadenza:command', message)
 }
 
 app.whenReady().then(async () => {
@@ -352,7 +352,7 @@ app.whenReady().then(async () => {
     return app.exit(1)
   }
 
-  ipcMain.on('kanzi:event', (_event, message) => {
+  ipcMain.on('kadenza:event', (_event, message) => {
     if (message && message.event === 'hook-ready') {
       hookReady = true
       drainPending()
@@ -361,7 +361,7 @@ app.whenReady().then(async () => {
     if (message &&
         ((message.event === 'tokens' && message.authorized) ||
          (message.event === 'authorization' && message.authorized))) {
-      // Make successful sign-in durable before the popup disappears or Kanzi
+      // Make successful sign-in durable before the popup disappears or Kadenza
       // is closed. The partition also persists web storage automatically.
       sessionSettled = true
       clearInterval(tokenTimer)
@@ -403,12 +403,12 @@ app.whenReady().then(async () => {
     }
   })
   // The sidecar has no window of its own to close and no user to quit it, so
-  // without this it outlives Kanzi: a crash, a SIGKILL or a session ending
+  // without this it outlives Kadenza: a crash, a SIGKILL or a session ending
   // leaves an invisible Electron holding ~180MB and the profile lock, and the
-  // next launch contends with it. Kanzi closing its end of the pipe is the one
+  // next launch contends with it. Kadenza closing its end of the pipe is the one
   // signal that arrives however the parent went away.
   input.on('close', () => {
-    log('Kanzi closed the command pipe; shutting down')
+    log('Kadenza closed the command pipe; shutting down')
     app.exit(0)
   })
   process.stdin.on('error', error => {
@@ -427,8 +427,8 @@ process.stdout.on('error', () => app.exit(0))
 process.stderr.on('error', () => {})
 
 // Last resort. Anything unhandled here would otherwise raise Electron's modal
-// error dialog over whatever the user is doing, so it goes to Kanzi's log and
-// the sidecar stops; Kanzi restarts it.
+// error dialog over whatever the user is doing, so it goes to Kadenza's log and
+// the sidecar stops; Kadenza restarts it.
 process.on('uncaughtException', error => {
   log('unhandled error in the sidecar:', (error && error.stack) || error)
   app.exit(1)

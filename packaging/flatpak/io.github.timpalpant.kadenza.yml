@@ -1,10 +1,10 @@
-app-id: io.github.timpalpant.kanzi
+app-id: io.github.timpalpant.kadenza
 runtime: org.kde.Platform
 runtime-version: '6.11'
 sdk: org.kde.Sdk
 base: org.electronjs.Electron2.BaseApp
 base-version: '25.08'
-command: kanzi
+command: kadenza
 
 finish-args:
   - --share=network
@@ -13,7 +13,7 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=dri
-  - --own-name=org.mpris.MediaPlayer2.kanzi
+  - --own-name=org.mpris.MediaPlayer2.kadenza
   - --talk-name=org.kde.kglobalaccel
 
 cleanup:
@@ -24,11 +24,11 @@ cleanup:
   - '*.a'
 
 modules:
-  - name: kanzi
+  - name: kadenza
     buildsystem: simple
     sources:
       - type: git
-        url: https://github.com/timpalpant/kanzi.git
+        url: https://github.com/timpalpant/kadenza.git
         tag: v0.1.0
       - type: archive
         url: https://github.com/castlabs/electron-releases/releases/download/v43.0.0%2Bwvcus/electron-v43.0.0+wvcus-linux-x64.zip
@@ -39,10 +39,10 @@ modules:
       - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DBUILD_TESTING=OFF
       - cmake --build build
       - cmake --install build
-      - mv /app/bin/kanzi /app/bin/kanzi.real
-      - install -Dm755 packaging/flatpak/kanzi-launcher /app/bin/kanzi
-      - mkdir -p /app/share/kanzi/sidecar/node_modules/electron/dist
-      - cp -a electron-dist/. /app/share/kanzi/sidecar/node_modules/electron/dist/
-      - mv /app/share/kanzi/sidecar/node_modules/electron/dist/electron /app/share/kanzi/sidecar/node_modules/electron/dist/electron.bin
-      - chmod +x /app/share/kanzi/sidecar/node_modules/electron/dist/electron.bin
-      - install -Dm755 packaging/flatpak/electron-shim /app/share/kanzi/sidecar/node_modules/electron/dist/electron
+      - mv /app/bin/kadenza /app/bin/kadenza.real
+      - install -Dm755 packaging/flatpak/kadenza-launcher /app/bin/kadenza
+      - mkdir -p /app/share/kadenza/sidecar/node_modules/electron/dist
+      - cp -a electron-dist/. /app/share/kadenza/sidecar/node_modules/electron/dist/
+      - mv /app/share/kadenza/sidecar/node_modules/electron/dist/electron /app/share/kadenza/sidecar/node_modules/electron/dist/electron.bin
+      - chmod +x /app/share/kadenza/sidecar/node_modules/electron/dist/electron.bin
+      - install -Dm755 packaging/flatpak/electron-shim /app/share/kadenza/sidecar/node_modules/electron/dist/electron

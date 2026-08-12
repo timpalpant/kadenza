@@ -21,7 +21,7 @@ set -euo pipefail
 
 readonly SELF="$(realpath "${BASH_SOURCE[0]}")"
 readonly REPO_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
-readonly PKGNAME="kanzi"
+readonly PKGNAME="kadenza"
 
 outdir="$REPO_ROOT/dist"
 skip_dependency_check=false

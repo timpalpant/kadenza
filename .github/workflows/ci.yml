@@ -54,12 +54,12 @@ jobs:
           find staging -type f | sort
           # The desktop entry's Icon= must resolve to an installed icon,
           # otherwise the launcher shows a blank tile.
-          test -x staging/usr/bin/kanzi
-          test -f staging/usr/share/applications/io.github.timpalpant.kanzi.desktop
-          test -f staging/usr/share/metainfo/io.github.timpalpant.kanzi.metainfo.xml
-          test -f staging/usr/share/icons/hicolor/scalable/apps/io.github.timpalpant.kanzi.svg
+          test -x staging/usr/bin/kadenza
+          test -f staging/usr/share/applications/io.github.timpalpant.kadenza.desktop
+          test -f staging/usr/share/metainfo/io.github.timpalpant.kadenza.metainfo.xml
+          test -f staging/usr/share/icons/hicolor/scalable/apps/io.github.timpalpant.kadenza.svg
           # Playback is useless without the sidecar, so it has to ship too.
-          test -f staging/usr/share/kanzi/sidecar/main.js
+          test -f staging/usr/share/kadenza/sidecar/main.js
 
   lint:
     name: QML and metadata
@@ -81,12 +81,12 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Validate the desktop entry
-        run: desktop-file-validate data/io.github.timpalpant.kanzi.desktop
+        run: desktop-file-validate data/io.github.timpalpant.kadenza.desktop
 
       - name: Validate the AppStream metadata
         # --no-net because the checks that hit the network are flaky in CI and
         # would fail on URLs that are fine but rate-limited.
-        run: appstreamcli validate --no-net data/io.github.timpalpant.kanzi.metainfo.xml
+        run: appstreamcli validate --no-net data/io.github.timpalpant.kadenza.metainfo.xml
 
       - name: Check the sidecar parses
         run: node --check sidecar/main.js && node --check sidecar/preload.js
@@ -144,7 +144,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           QT_FORCE_STDERR_LOGGING: '1'
         run: |
-          timeout 15 ./build/kanzi > out.log 2>&1 || true
+          timeout 15 ./build/kadenza > out.log 2>&1 || true
           cat out.log
           if grep -Eq 'is not a type|Cannot assign|ReferenceError|Binding loop|Cannot create delegate' out.log; then
             exit 1
@@ -174,11 +174,11 @@ jobs:
           done
 
       # The release package downloads a fixed tarball, so it has to verify it.
-      # SKIP belongs only to kanzi-git, whose source is a git checkout.
+      # SKIP belongs only to kadenza-git, whose source is a git checkout.
       - name: Check the release tarball is pinned by digest
         run: |
-          if grep -q "^sha256sums=('SKIP')" packaging/arch/kanzi/PKGBUILD; then
-            echo "::error::packaging/arch/kanzi/PKGBUILD downloads a tarball without checking it"
+          if grep -q "^sha256sums=('SKIP')" packaging/arch/kadenza/PKGBUILD; then
+            echo "::error::packaging/arch/kadenza/PKGBUILD downloads a tarball without checking it"
             exit 1
           fi
 
@@ -192,7 +192,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           apt-get update
-          # gtk3/nss/alsa are not Kanzi's own dependencies -- they are the
+          # gtk3/nss/alsa are not Kadenza's own dependencies -- they are the
           # bundled Electron binary's. CPACK_DEBIAN_PACKAGE_SHLIBDEPS scans
           # every ELF file in the package, Electron included, and only adds a
           # library to the shipped Depends: if it can resolve which installed
@@ -249,7 +249,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: kanzi-deb-package
+          name: kadenza-deb-package
           path: |
             dist/*.deb
             dist/*.deb.sha256
@@ -262,7 +262,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          # gtk3/nss/alsa-lib are not Kanzi's own dependencies -- they are the
+          # gtk3/nss/alsa-lib are not Kadenza's own dependencies -- they are the
           # bundled Electron binary's, needed here so rpmbuild's automatic
           # dependency scan can resolve them into the package's Requires:
           # rather than silently omitting them.
@@ -319,7 +319,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: kanzi-rpm-package
+          name: kadenza-rpm-package
           path: |
             dist/*.rpm
             dist/*.rpm.sha256
@@ -367,7 +367,7 @@ jobs:
           for attempt in 1 2 3; do
             if flatpak-builder --user --disable-rofiles-fuse --force-clean \
               --repo=flatpak-repo build-flatpak \
-              packaging/flatpak/io.github.timpalpant.kanzi.ci.yml; then
+              packaging/flatpak/io.github.timpalpant.kadenza.ci.yml; then
               break
             fi
             if [ "$attempt" = 3 ]; then
@@ -379,11 +379,11 @@ jobs:
 
       - name: Create the bundle
         run: |
-          flatpak build-bundle flatpak-repo kanzi.flatpak \
-            io.github.timpalpant.kanzi
+          flatpak build-bundle flatpak-repo kadenza.flatpak \
+            io.github.timpalpant.kadenza
 
       - uses: actions/upload-artifact@v7
         with:
-          name: kanzi-flatpak
-          path: kanzi.flatpak
+          name: kadenza-flatpak
+          path: kadenza.flatpak
           if-no-files-found: error

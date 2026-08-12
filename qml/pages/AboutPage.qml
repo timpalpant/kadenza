@@ -172,7 +172,7 @@ Kirigami.ScrollablePage {
                 }
                 // Kirigami drops the description entirely, which left the
                 // entry reading as a bare product name with no explanation of
-                // why Kanzi ships it.
+                // why Kadenza ships it.
                 QQC2.Label {
                     text: modelData.description
                     visible: text.length > 0

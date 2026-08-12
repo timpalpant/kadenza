@@ -23,8 +23,8 @@ public:
     bool canQuit() const { return true; }
     bool canRaise() const { return true; }
     bool hasTrackList() const { return false; }
-    QString identity() const { return QStringLiteral("Kanzi"); }
-    QString desktopEntry() const { return QStringLiteral("io.github.timpalpant.kanzi"); }
+    QString identity() const { return QStringLiteral("Kadenza"); }
+    QString desktopEntry() const { return QStringLiteral("io.github.timpalpant.kadenza"); }
     QStringList supportedUriSchemes() const { return {}; }
     QStringList supportedMimeTypes() const { return {}; }
 

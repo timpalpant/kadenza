@@ -31,9 +31,9 @@ jobs:
         # release notes would ship a package labelled with the wrong version.
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          project=$(grep -oP 'project\(kanzi VERSION \K[0-9.]+' CMakeLists.txt)
+          project=$(grep -oP 'project\(kadenza VERSION \K[0-9.]+' CMakeLists.txt)
           test "$tag" = "$project"
-          grep -q "version=\"$tag\"" data/io.github.timpalpant.kanzi.metainfo.xml
+          grep -q "version=\"$tag\"" data/io.github.timpalpant.kadenza.metainfo.xml
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
           cmake --build build
           ctest --test-dir build --output-on-failure --no-tests=error
@@ -50,14 +50,14 @@ jobs:
         # This is the tarball the release PKGBUILD downloads, so its digest is
         # published alongside it.
         run: |
-          name="kanzi-${GITHUB_REF_NAME#v}"
+          name="kadenza-${GITHUB_REF_NAME#v}"
           git archive --format=tar.gz --prefix="$name/" -o "$name.tar.gz" "$GITHUB_REF_NAME"
           sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
 
       - uses: actions/upload-artifact@v7
         with:
           name: source
-          path: kanzi-*.tar.gz*
+          path: kadenza-*.tar.gz*
           if-no-files-found: error
 
   archpkg:
@@ -116,7 +116,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           apt-get update
-          # gtk3/nss/alsa are not Kanzi's own dependencies -- they are the
+          # gtk3/nss/alsa are not Kadenza's own dependencies -- they are the
           # bundled Electron binary's. CPACK_DEBIAN_PACKAGE_SHLIBDEPS scans
           # every ELF file in the package, Electron included, and only adds a
           # library to the shipped Depends: if it can resolve which installed
@@ -140,7 +140,7 @@ jobs:
 
       # CMake only bundles sidecar/node_modules/electron into the package if
       # it exists at configure time. Without this, the .deb silently shipped
-      # with no Electron runtime and nothing to pull one in -- Kanzi's binary
+      # with no Electron runtime and nothing to pull one in -- Kadenza's binary
       # execs it directly rather than through a system node/npm, so there was
       # no dependency that would have caught this at install time either.
       #
@@ -189,7 +189,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          # gtk3/nss/alsa-lib are not Kanzi's own dependencies -- they are the
+          # gtk3/nss/alsa-lib are not Kadenza's own dependencies -- they are the
           # bundled Electron binary's, needed here so rpmbuild's automatic
           # dependency scan can resolve them into the package's Requires:
           # rather than silently omitting them.
@@ -213,7 +213,7 @@ jobs:
 
       # CMake only bundles sidecar/node_modules/electron into the package if
       # it exists at configure time. Without this, the .rpm silently shipped
-      # with no Electron runtime and nothing to pull one in -- Kanzi's binary
+      # with no Electron runtime and nothing to pull one in -- Kadenza's binary
       # execs it directly rather than through a system node/npm, so there was
       # no dependency that would have caught this at install time either.
       #
@@ -286,7 +286,7 @@ jobs:
           for attempt in 1 2 3; do
             if flatpak-builder --user --disable-rofiles-fuse --force-clean \
               --repo=flatpak-repo build-flatpak \
-              packaging/flatpak/io.github.timpalpant.kanzi.yml; then
+              packaging/flatpak/io.github.timpalpant.kadenza.yml; then
               break
             fi
             if [ "$attempt" = 3 ]; then
@@ -298,14 +298,14 @@ jobs:
 
       - name: Create the bundle
         run: |
-          flatpak build-bundle flatpak-repo kanzi.flatpak \
-            io.github.timpalpant.kanzi
-          sha256sum kanzi.flatpak > kanzi.flatpak.sha256
+          flatpak build-bundle flatpak-repo kadenza.flatpak \
+            io.github.timpalpant.kadenza
+          sha256sum kadenza.flatpak > kadenza.flatpak.sha256
 
       - uses: actions/upload-artifact@v7
         with:
           name: flatpak-bundle
-          path: kanzi.flatpak*
+          path: kadenza.flatpak*
           if-no-files-found: error
 
   publish:
@@ -334,30 +334,30 @@ jobs:
             **Arch Linux** — install the attached package directly:
 
             ```sh
-            sudo pacman -U kanzi-*.pkg.tar.zst
+            sudo pacman -U kadenza-*.pkg.tar.zst
             ```
 
             **Debian / Ubuntu** — download the attached `.deb`, then:
 
             ```sh
-            sudo apt install ./kanzi_*.deb
+            sudo apt install ./kadenza_*.deb
             ```
 
             **Fedora / RPM-based** — download the attached `.rpm`, then:
 
             ```sh
-            sudo dnf install ./kanzi-*.rpm
+            sudo dnf install ./kadenza-*.rpm
             ```
 
-            **Flatpak** — download `kanzi.flatpak`, then:
+            **Flatpak** — download `kadenza.flatpak`, then:
 
             ```sh
-            flatpak install --user kanzi.flatpak
-            flatpak run io.github.timpalpant.kanzi
+            flatpak install --user kadenza.flatpak
+            flatpak run io.github.timpalpant.kadenza
             ```
 
-            **From source** — `kanzi-*.tar.gz` is the release tarball used by
+            **From source** — `kadenza-*.tar.gz` is the release tarball used by
             the release PKGBUILD. A `.sha256` accompanies every artifact.
 
-            An active Apple Music subscription is required. Kanzi is an
+            An active Apple Music subscription is required. Kadenza is an
             unofficial client and is not affiliated with or endorsed by Apple.

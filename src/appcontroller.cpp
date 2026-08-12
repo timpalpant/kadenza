@@ -41,7 +41,7 @@ demoItem(const char *id, const char *type, const char *title, const char *subtit
     item.subtitle = QString::fromLatin1(subtitle);
     item.album = QString::fromLatin1(album);
     item.streamable = item.isSong();
-    item.artworkUrl = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kanzi/data/demo/") + QString::fromLatin1(artwork);
+    item.artworkUrl = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kadenza/data/demo/") + QString::fromLatin1(artwork);
     item.durationMs = duration;
     return item;
 }
@@ -101,7 +101,7 @@ AppController::AppController(QObject *parent)
     , m_artistLatest(this)
     , m_pendingPlay(this)
 {
-    m_demo = qEnvironmentVariableIsSet("KANZI_DEMO");
+    m_demo = qEnvironmentVariableIsSet("KADENZA_DEMO");
     m_sidebarWidth = KConfigGroup(KSharedConfig::openConfig(), "General").readEntry("SidebarWidth", 0);
     const KConfigGroup general(KSharedConfig::openConfig(), "General");
     m_searchHistory = general.readEntry("SearchHistory", QStringList{});
@@ -1079,8 +1079,8 @@ void AppController::loadDemoData()
                             demoItem("artist-arcade", "artists", "North Arcade", "Electronic", "", "night-transit.svg"),
                             demoItem("artist-shapes", "artists", "The Quiet Shapes", "Indie Pop", "", "tidal-memory.svg"),
                             demoItem("artist-daylight", "artists", "Daylight Assembly", "Ambient", "", "soft-geometry.svg")});
-    m_playlists.replaceItems({demoItem("playlist-focus", "playlists", "Quiet Focus", "Kanzi", "", "soft-geometry.svg"),
-                              demoItem("playlist-evening", "playlists", "Late Evening", "Kanzi", "", "night-transit.svg")});
+    m_playlists.replaceItems({demoItem("playlist-focus", "playlists", "Quiet Focus", "Kadenza", "", "soft-geometry.svg"),
+                              demoItem("playlist-evening", "playlists", "Late Evening", "Kadenza", "", "night-transit.svg")});
 
     QList<MediaItem> songs = {demoItem("demo-1", "songs", "Afterglow", "Mira Vale", "Violet Hours", "violet-hours.svg", 238000),
                               demoItem("demo-2", "songs", "Glass Gardens", "North Arcade", "Night Transit", "night-transit.svg", 213000),
@@ -1092,7 +1092,7 @@ void AppController::loadDemoData()
     m_searchSongs.replaceItems({songs.at(0), songs.at(1)});
     m_searchAlbums.replaceItems({violet, transit});
     m_searchArtists.replaceItems({demoItem("artist-shapes", "artists", "The Quiet Shapes", "Indie Pop", "", "tidal-memory.svg")});
-    m_searchPlaylists.replaceItems({demoItem("playlist-focus", "playlists", "Quiet Focus", "Kanzi", "", "soft-geometry.svg")});
+    m_searchPlaylists.replaceItems({demoItem("playlist-focus", "playlists", "Quiet Focus", "Kadenza", "", "soft-geometry.svg")});
 }
 
 void AppController::handleSuccess(const QString &tag, const QJsonDocument &document)
@@ -1129,7 +1129,7 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
             --m_loadingCount;
         Q_EMIT loadingChanged();
         const auto results = document.object().value(QStringLiteral("results")).toObject();
-        // Each type maps to an array of charts; Kanzi shows the first of each.
+        // Each type maps to an array of charts; Kadenza shows the first of each.
         const auto firstChart = [&results](const QString &name) {
             const auto charts = results.value(name).toArray();
             return charts.isEmpty() ? QJsonArray() : charts.first().toObject().value(QStringLiteral("data")).toArray();

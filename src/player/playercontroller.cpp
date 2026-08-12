@@ -22,7 +22,7 @@ constexpr int kMaxSidecarRestarts = 5;
 constexpr int kSidecarRestartBaseMs = 1000;
 // Name of the system Electron binary the Arch package depends on instead of
 // bundling. Must track sidecar/package.json's pinned Electron version and
-// packaging/arch/kanzi/PKGBUILD's `depends`: the sidecar is built against a
+// packaging/arch/kadenza/PKGBUILD's `depends`: the sidecar is built against a
 // specific castlabs Electron+Widevine build, and a version drift here would
 // not fail loudly -- it would just run against whatever is on PATH.
 //
@@ -48,7 +48,7 @@ PlayerController::PlayerController(QObject *parent)
     m_persistTimer.setInterval(5000);
     connect(&m_persistTimer, &QTimer::timeout, this, [this] { persistPlayerState(); });
     m_persistTimer.start();
-    m_trace = qEnvironmentVariableIsSet("KANZI_TRACE");
+    m_trace = qEnvironmentVariableIsSet("KADENZA_TRACE");
     m_process.setProcessChannelMode(QProcess::SeparateChannels);
     connect(&m_process, &QProcess::readyReadStandardOutput, this, [this] {
         m_stdoutBuffer += m_process.readAllStandardOutput();
@@ -57,11 +57,11 @@ PlayerController::PlayerController(QObject *parent)
             const auto line = m_stdoutBuffer.left(newline).trimmed();
             m_stdoutBuffer.remove(0, newline + 1);
             if (!line.isEmpty()) {
-                // KANZI_TRACE=1 echoes everything the sidecar reports. The commands
-                // Kanzi sends and the events it gets back travel over separate pipes,
+                // KADENZA_TRACE=1 echoes everything the sidecar reports. The commands
+                // Kadenza sends and the events it gets back travel over separate pipes,
                 // so one can work while the other is silent.
                 if (m_trace)
-                    std::fprintf(stderr, "kanzi << %s\n", line.left(400).constData());
+                    std::fprintf(stderr, "kadenza << %s\n", line.left(400).constData());
                 handleLine(line);
             }
         }
@@ -69,7 +69,7 @@ PlayerController::PlayerController(QObject *parent)
     connect(&m_process, &QProcess::readyReadStandardError, this, [this] {
         const auto output = m_process.readAllStandardError().trimmed();
         if (!output.isEmpty())
-            qInfo().noquote() << "kanzi sidecar:" << output;
+            qInfo().noquote() << "kadenza sidecar:" << output;
     });
     connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) { setError(m_process.errorString()); });
     connect(&m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this](int, QProcess::ExitStatus) {
@@ -99,7 +99,7 @@ PlayerController::~PlayerController()
     if (m_process.state() != QProcess::NotRunning) {
         send({{QStringLiteral("cmd"), QStringLiteral("quit")}});
         // Closing the pipe is what the sidecar falls back on if the command is
-        // never processed, and it is the same signal it would see had Kanzi
+        // never processed, and it is the same signal it would see had Kadenza
         // crashed instead of exited.
         m_process.closeWriteChannel();
         if (!m_process.waitForFinished(1500)) {
@@ -114,11 +114,11 @@ PlayerController::~PlayerController()
 
 QString PlayerController::locateSidecar() const
 {
-    const QString override = qEnvironmentVariable("KANZI_SIDECAR");
+    const QString override = qEnvironmentVariable("KADENZA_SIDECAR");
     const QStringList candidates = {
         override,
-        QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("kanzi/sidecar"), QStandardPaths::LocateDirectory),
-        QString::fromUtf8(KANZI_SOURCE_SIDECAR),
+        QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("kadenza/sidecar"), QStandardPaths::LocateDirectory),
+        QString::fromUtf8(KADENZA_SOURCE_SIDECAR),
     };
     for (const auto &candidate : candidates) {
         if (!candidate.isEmpty() && QFileInfo::exists(candidate + QStringLiteral("/main.js")))
@@ -129,7 +129,7 @@ QString PlayerController::locateSidecar() const
 
 QString PlayerController::locateElectron(const QString &sidecar) const
 {
-    const QString override = qEnvironmentVariable("KANZI_ELECTRON");
+    const QString override = qEnvironmentVariable("KADENZA_ELECTRON");
     if (!override.isEmpty() && QFileInfo::exists(override))
         return override;
     const QString bundled = sidecar + QStringLiteral("/node_modules/electron/dist/electron");
@@ -179,7 +179,7 @@ void PlayerController::setDemoState()
     m_title = QStringLiteral("Afterglow");
     m_artist = QStringLiteral("Mira Vale");
     m_album = QStringLiteral("Violet Hours");
-    m_artwork = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kanzi/data/demo/violet-hours.svg");
+    m_artwork = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kadenza/data/demo/violet-hours.svg");
     m_positionMs = 142000;
     m_durationMs = 238000;
     m_volume = 0.72;
@@ -204,7 +204,7 @@ void PlayerController::setDemoState()
         item.title = QString::fromLatin1(title);
         item.subtitle = QString::fromLatin1(artist);
         item.album = QString::fromLatin1(album);
-        item.artworkUrl = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kanzi/data/demo/") + QString::fromLatin1(artwork);
+        item.artworkUrl = QStringLiteral("qrc:/qt/qml/io/github/timpalpant/kadenza/data/demo/") + QString::fromLatin1(artwork);
         item.durationMs = duration;
         item.streamable = true;
         queue.push_back(std::move(item));
@@ -225,7 +225,7 @@ void PlayerController::send(const QJsonObject &command)
 {
     if (m_process.state() == QProcess::Running) {
         if (m_trace)
-            std::fprintf(stderr, "kanzi >> %s\n", QJsonDocument(command).toJson(QJsonDocument::Compact).constData());
+            std::fprintf(stderr, "kadenza >> %s\n", QJsonDocument(command).toJson(QJsonDocument::Compact).constData());
         m_process.write(QJsonDocument(command).toJson(QJsonDocument::Compact) + '\n');
     }
 }
@@ -235,7 +235,7 @@ void PlayerController::handleLine(const QByteArray &line)
     QJsonParseError error;
     const auto document = QJsonDocument::fromJson(line, &error);
     if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        qWarning().noquote() << "kanzi: invalid sidecar message:" << line;
+        qWarning().noquote() << "kadenza: invalid sidecar message:" << line;
         return;
     }
     handleEvent(document.object());
@@ -249,7 +249,7 @@ void PlayerController::handleEvent(const QJsonObject &object)
         // sent now would only be queued. Readiness is claimed at hook-ready.
         m_restartAttempts = 0;
     } else if (event == QStringLiteral("session-cookie")) {
-        qInfo().noquote() << "Kanzi Apple session cookie:" << object.value(QStringLiteral("detail")).toString();
+        qInfo().noquote() << "Kadenza Apple session cookie:" << object.value(QStringLiteral("detail")).toString();
     } else if (event == QStringLiteral("session-reauthorizing")) {
         if (!m_restoringSession) {
             m_restoringSession = true;
@@ -322,7 +322,7 @@ void PlayerController::handleEvent(const QJsonObject &object)
     } else if (event == QStringLiteral("playbackDiagnostics")) {
         // Logged rather than shown: this is the evidence needed to tell a
         // preview-locked player apart from an unauthorized or unsubscribed one.
-        qInfo().noquote() << "Kanzi playback:"
+        qInfo().noquote() << "Kadenza playback:"
                           << "previewOnly=" << object.value(QStringLiteral("previewOnly")).toVariant()
                           << "supported=" << object.value(QStringLiteral("previewOnlySupported")).toBool()
                           << "authorized=" << object.value(QStringLiteral("authorized")).toBool()
@@ -332,7 +332,7 @@ void PlayerController::handleEvent(const QJsonObject &object)
                           << "catalog=" << object.value(QStringLiteral("catalogDurationMs")).toInteger();
         const QString previewError = object.value(QStringLiteral("previewOnlyError")).toString();
         if (!previewError.isEmpty())
-            qWarning().noquote() << "Kanzi could not clear preview mode:" << previewError;
+            qWarning().noquote() << "Kadenza could not clear preview mode:" << previewError;
     } else if (event == QStringLiteral("position")) {
         m_positionMs = object.value(QStringLiteral("positionMs")).toInteger();
         m_durationMs = object.value(QStringLiteral("durationMs")).toInteger();

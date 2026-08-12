@@ -1,11 +1,11 @@
 # Maintainer: Tim Palpant <tim@palpant.us>
 
-pkgname=kanzi
-pkgver=0.1.2
+pkgname=kadenza
+pkgver=0.1.0
 pkgrel=1
 pkgdesc="Native Apple Music client for KDE Plasma"
 arch=('x86_64')
-url="https://github.com/timpalpant/kanzi"
+url="https://github.com/timpalpant/kadenza"
 license=('GPL-3.0-or-later')
 # Bundles a Widevine-enabled Electron build (MIT-licensed, from
 # https://github.com/castlabs/electron-releases, pinned in
@@ -14,10 +14,10 @@ license=('GPL-3.0-or-later')
 # instead of failing to build. This used to instead depend on the AUR package
 # electron43-castlab-bin, but that package's own launcher script has a
 # packaging bug (an unsubstituted "@ELECTRON@" template placeholder) that
-# makes it fail on every launch, so Kanzi now bundles its own copy rather
+# makes it fail on every launch, so Kadenza now bundles its own copy rather
 # than depending on a broken upstream package.
 #
-# gtk3 and nss are not Kanzi's own dependencies -- they are the bundled
+# gtk3 and nss are not Kadenza's own dependencies -- they are the bundled
 # Electron binary's. Unlike the .deb/.rpm builds, nothing here scans the
 # bundled binary's own linked libraries automatically, so they have to be
 # declared by hand; confirmed via `ldd` on the bundled binary in a bare

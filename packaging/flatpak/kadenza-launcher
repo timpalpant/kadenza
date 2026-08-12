@@ -1,0 +1,4 @@
+#!/bin/sh
+export KADENZA_SIDECAR="${KADENZA_SIDECAR:-/app/share/kadenza/sidecar}"
+exec /app/bin/kadenza.real "$@"
+

@@ -1,6 +1,6 @@
 [Global]
-IconName=io.github.timpalpant.kanzi
-Name=Kanzi
+IconName=io.github.timpalpant.kadenza
+Name=Kadenza
 Comment=Apple Music client for KDE Plasma
 
 [Event/trackChanged]

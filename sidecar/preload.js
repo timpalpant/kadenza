@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Miguel Rincon
-// SPDX-FileCopyrightText: 2026 the Kanzi authors
+// SPDX-FileCopyrightText: 2026 the Kadenza authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // MusicKit bridge derived from Slipmat. It never reads Apple page DOM or user
@@ -15,7 +15,7 @@ let lastTokens = ''
 let authorizedUserToken = null
 let authorizationSettled = false
 
-const emit = (event, payload = {}) => ipcRenderer.send('kanzi:event', { event, ...payload })
+const emit = (event, payload = {}) => ipcRenderer.send('kadenza:event', { event, ...payload })
 
 function pick(...getters) {
   for (const getter of getters) {
@@ -31,7 +31,7 @@ function getInstance() {
   return pick(() => window.MusicKit && window.MusicKit.getInstance())
 }
 
-window.__kanziReady = () => !!getInstance()
+window.__kadenzaReady = () => !!getInstance()
 
 function readTokens() {
   if (!music) return null
@@ -398,7 +398,7 @@ const commands = {
     await ensureAuthorized()
   },
   // Silent counterpart to authorize(). It only ever adopts a session MusicKit
-  // has already restored, so a launch with no saved session shows Kanzi's own
+  // has already restored, so a launch with no saved session shows Kadenza's own
   // sign-in page instead of Apple's popup appearing unrequested.
   restoreAuthorization() {
     if (!adoptExistingSession()) {
@@ -418,7 +418,7 @@ const commands = {
   refreshTokens: () => pushTokens(),
 }
 
-ipcRenderer.on('kanzi:command', async (_event, message) => {
+ipcRenderer.on('kadenza:command', async (_event, message) => {
   emit('cmd-recv', { cmd: message.cmd })
   const command = commands[message.cmd]
   if (!command) return emit('error', { code: 'unknown-command', detail: message.cmd })
@@ -445,7 +445,7 @@ function wire(trigger) {
   return true
 }
 
-ipcRenderer.on('kanzi:wire', () => {
+ipcRenderer.on('kadenza:wire', () => {
   if (!wire('main-probe')) emit('hook-failed', { detail: 'MusicKit vanished before the hook attached' })
 })
 

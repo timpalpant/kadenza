@@ -22,25 +22,25 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    KLocalizedString::setApplicationDomain(QByteArrayLiteral("kanzi"));
+    KLocalizedString::setApplicationDomain(QByteArrayLiteral("kadenza"));
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
     }
 
-    KAboutData aboutData(QStringLiteral("kanzi"),
-                         i18n("Kanzi"),
-                         QStringLiteral(KANZI_VERSION_STRING),
+    KAboutData aboutData(QStringLiteral("kadenza"),
+                         i18n("Kadenza"),
+                         QStringLiteral(KADENZA_VERSION_STRING),
                          i18n("A native Apple Music client for KDE Plasma"),
                          KAboutLicense::GPL_V3,
-                         i18n("© 2026 the Kanzi authors"));
-    aboutData.setOtherText(i18n("Kanzi is an unofficial client and is not affiliated with or "
+                         i18n("© 2026 the Kadenza authors"));
+    aboutData.setOtherText(i18n("Kadenza is an unofficial client and is not affiliated with or "
                                 "endorsed by Apple. Playback uses Apple Music's MusicKit and "
                                 "requires an active subscription.\n\n"
                                 "The playback sidecar contains code derived from Slipmat by Miguel "
                                 "Rincon, used under the GPL."));
-    aboutData.setHomepage(QStringLiteral("https://github.com/timpalpant/kanzi"));
-    aboutData.setBugAddress(QByteArrayLiteral("https://github.com/timpalpant/kanzi/issues"));
-    aboutData.setDesktopFileName(QStringLiteral(KANZI_APP_ID));
+    aboutData.setHomepage(QStringLiteral("https://github.com/timpalpant/kadenza"));
+    aboutData.setBugAddress(QByteArrayLiteral("https://github.com/timpalpant/kadenza/issues"));
+    aboutData.setDesktopFileName(QStringLiteral(KADENZA_APP_ID));
     // Only genuine runtime dependencies belong here. castLabs' Widevine-enabled
     // Electron is the runtime the sidecar executes on. Slipmat is not listed:
     // its code was adapted into the sidecar rather than linked against, so the
@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
                            QString(),
                            QStringLiteral("https://github.com/castlabs/electron-releases"));
     KAboutData::setApplicationData(aboutData);
-    const QIcon bundledIcon(QStringLiteral(":/qt/qml/io/github/timpalpant/kanzi/data/icons/"
-                                           "io.github.timpalpant.kanzi.svg"));
-    QGuiApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral(KANZI_APP_ID), bundledIcon));
+    const QIcon bundledIcon(QStringLiteral(":/qt/qml/io/github/timpalpant/kadenza/data/icons/"
+                                           "io.github.timpalpant.kadenza.svg"));
+    QGuiApplication::setWindowIcon(QIcon::fromTheme(QStringLiteral(KADENZA_APP_ID), bundledIcon));
 
     QCommandLineParser parser;
     aboutData.setupCommandLine(&parser);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     KLocalization::setupLocalizedContext(&engine);
     engine.rootContext()->setContextProperty(QStringLiteral("AboutData"), QVariant::fromValue(aboutData));
-    engine.loadFromModule("io.github.timpalpant.kanzi", "Main");
+    engine.loadFromModule("io.github.timpalpant.kadenza", "Main");
     if (engine.rootObjects().isEmpty())
         return 1;
     auto *mainWindow = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
         mainWindow->requestActivate();
     };
 
-    auto *showShortcut = new QAction(i18n("Show Kanzi"), &app);
-    showShortcut->setObjectName(QStringLiteral("show-kanzi"));
+    auto *showShortcut = new QAction(i18n("Show Kadenza"), &app);
+    showShortcut->setObjectName(QStringLiteral("show-kadenza"));
     QObject::connect(showShortcut, &QAction::triggered, &app, showWindow);
     KGlobalAccel::setGlobalShortcut(showShortcut, QKeySequence(QStringLiteral("Meta+Alt+K")));
     const auto mediaShortcut = [&app](const QString &name, const QString &text, QKeySequence sequence, const std::function<void()> &handler) {
@@ -109,20 +109,20 @@ int main(int argc, char *argv[])
         // from System Settings like any other KDE notification.
         KNotification::event(QStringLiteral("trackChanged"), player->title(), player->artist());
     });
-    const QString screenshotPath = qEnvironmentVariable("KANZI_SCREENSHOT");
+    const QString screenshotPath = qEnvironmentVariable("KADENZA_SCREENSHOT");
     if (!screenshotPath.isEmpty()) {
         auto *window = mainWindow;
         bool widthOk = false;
         bool heightOk = false;
-        const int screenshotWidth = qEnvironmentVariableIntValue("KANZI_SCREENSHOT_WIDTH", &widthOk);
-        const int screenshotHeight = qEnvironmentVariableIntValue("KANZI_SCREENSHOT_HEIGHT", &heightOk);
+        const int screenshotWidth = qEnvironmentVariableIntValue("KADENZA_SCREENSHOT_WIDTH", &widthOk);
+        const int screenshotHeight = qEnvironmentVariableIntValue("KADENZA_SCREENSHOT_HEIGHT", &heightOk);
         if (widthOk && heightOk && screenshotWidth > 0 && screenshotHeight > 0)
             window->resize(screenshotWidth, screenshotHeight);
-        const QString page = qEnvironmentVariable("KANZI_DEMO_PAGE", "home");
+        const QString page = qEnvironmentVariable("KADENZA_DEMO_PAGE", "home");
         // Artwork loads asynchronously and then fades in, so a grab taken too
         // early catches tiles mid-fade. Overridable for slower machines.
         bool delayOk = false;
-        const int settle = qEnvironmentVariableIntValue("KANZI_SCREENSHOT_DELAY", &delayOk);
+        const int settle = qEnvironmentVariableIntValue("KADENZA_SCREENSHOT_DELAY", &delayOk);
         const int settleMs = delayOk && settle > 0 ? settle : 2500;
         QTimer::singleShot(250, window, [window, page, screenshotPath, settleMs, &app] {
             QMetaObject::invokeMethod(window, "navigate", Q_ARG(QVariant, page));

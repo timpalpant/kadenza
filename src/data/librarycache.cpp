@@ -122,7 +122,7 @@ void LibraryCache::upsert(const QString &kind, const QList<MediaItem> &items, qi
         query.addBindValue(position++);
         query.addBindValue(epoch);
         if (!query.exec())
-            qWarning() << "kanzi: cache upsert failed" << query.lastError().text();
+            qWarning() << "kadenza: cache upsert failed" << query.lastError().text();
     }
 
     database.commit();
@@ -160,7 +160,7 @@ QList<MediaItem> LibraryCache::items(const QString &kind, Sort sort, int limit, 
     query.addBindValue(limit);
     query.addBindValue(offset);
     if (!query.exec()) {
-        qWarning() << "kanzi: cache read failed" << query.lastError().text();
+        qWarning() << "kadenza: cache read failed" << query.lastError().text();
         return result;
     }
     while (query.next())

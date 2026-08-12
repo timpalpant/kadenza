@@ -159,7 +159,7 @@ private:
     bool m_restorePending = false;
     bool m_shuttingDown = false;
     // Set whenever a persisted value actually changes, so an idle or paused
-    // Kanzi stops rewriting an identical config file every few seconds.
+    // Kadenza stops rewriting an identical config file every few seconds.
     bool m_stateDirty = false;
     int m_restartAttempts = 0;
 };

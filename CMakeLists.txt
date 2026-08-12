@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(kanzi VERSION 0.1.2 LANGUAGES CXX)
+project(kadenza VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,7 +27,7 @@ qt_policy(SET QTP0004 NEW)
 
 configure_file(src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h @ONLY)
 
-qt_add_executable(kanzi
+qt_add_executable(kadenza
     src/main.cpp
     src/appcontroller.cpp src/appcontroller.h
     src/api/apiclient.cpp src/api/apiclient.h
@@ -39,14 +39,14 @@ qt_add_executable(kanzi
     src/player/mprisplayer.cpp src/player/mprisplayer.h
 )
 
-target_include_directories(kanzi PRIVATE
+target_include_directories(kadenza PRIVATE
     src src/api src/data src/media src/player ${CMAKE_CURRENT_BINARY_DIR})
 
-target_compile_definitions(kanzi PRIVATE
-    KANZI_SOURCE_SIDECAR="${CMAKE_CURRENT_SOURCE_DIR}/sidecar")
+target_compile_definitions(kadenza PRIVATE
+    KADENZA_SOURCE_SIDECAR="${CMAKE_CURRENT_SOURCE_DIR}/sidecar")
 
-qt_add_qml_module(kanzi
-    URI io.github.timpalpant.kanzi
+qt_add_qml_module(kadenza
+    URI io.github.timpalpant.kadenza
     VERSION 1.0
     QML_FILES
         qml/Main.qml
@@ -71,7 +71,7 @@ qt_add_qml_module(kanzi
         qml/components/ArtworkSizeSlider.qml
         qml/components/LinkLabel.qml
     RESOURCES
-        data/icons/io.github.timpalpant.kanzi.svg
+        data/icons/io.github.timpalpant.kadenza.svg
         data/demo/violet-hours.svg
         data/demo/night-transit.svg
         data/demo/tidal-memory.svg
@@ -80,27 +80,27 @@ qt_add_qml_module(kanzi
         data/demo/static-bloom.svg
 )
 
-target_link_libraries(kanzi PRIVATE
+target_link_libraries(kadenza PRIVATE
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2
     Qt6::Widgets Qt6::Network Qt6::DBus Qt6::Sql
     KF6::CoreAddons KF6::I18n KF6::I18nQml KF6::ConfigCore)
-target_link_libraries(kanzi PRIVATE KF6::Notifications KF6::GlobalAccel)
+target_link_libraries(kadenza PRIVATE KF6::Notifications KF6::GlobalAccel)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-install(TARGETS kanzi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES data/io.github.timpalpant.kanzi.desktop
+install(TARGETS kadenza RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES data/io.github.timpalpant.kadenza.desktop
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
-install(FILES data/io.github.timpalpant.kanzi.metainfo.xml
+install(FILES data/io.github.timpalpant.kadenza.metainfo.xml
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
-install(FILES data/icons/io.github.timpalpant.kanzi.svg
+install(FILES data/icons/io.github.timpalpant.kadenza.svg
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
-install(FILES data/kanzi.notifyrc
+install(FILES data/kadenza.notifyrc
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/knotifications6)
 install(FILES sidecar/main.js sidecar/preload.js sidecar/package.json sidecar/package-lock.json
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kanzi/sidecar)
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kadenza/sidecar)
 # Only dist/, not the whole npm package: locateElectron() (playercontroller.cpp)
 # execs node_modules/electron/dist/electron directly and never touches the
 # package's own cli.js, install.js, docs, or vmp-resign.py. Bundling those
@@ -109,11 +109,11 @@ install(FILES sidecar/main.js sidecar/preload.js sidecar/package.json sidecar/pa
 # files nothing ever runs.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sidecar/node_modules/electron/dist/electron")
     install(DIRECTORY sidecar/node_modules/electron/dist
-            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kanzi/sidecar/node_modules/electron
+            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/kadenza/sidecar/node_modules/electron
             USE_SOURCE_PERMISSIONS)
 endif()
 
-set(CPACK_PACKAGE_NAME "kanzi")
+set(CPACK_PACKAGE_NAME "kadenza")
 set(CPACK_PACKAGE_VENDOR "Timothy Palpant")
 set(CPACK_PACKAGE_CONTACT "Timothy Palpant <tim@palpant.us>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Apple Music client for KDE Plasma")
@@ -121,12 +121,12 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
 set(CPACK_DEBIAN_PACKAGE_SECTION "sound")
 # Not nodejs: the bundled Electron is self-contained (it embeds its own Node
-# runtime), and Kanzi execs it directly by absolute path rather than through a
+# runtime), and Kadenza execs it directly by absolute path rather than through a
 # system node/npm.
 # qml6-module-org-kde-desktop provides the "org.kde.desktop" QQC2 style
 # main.cpp always selects unless QT_QUICK_CONTROLS_STYLE is already set --
 # without it the QML engine refuses to load at all, confirmed by installing
-# this .deb in a bare debian:trixie container with none of Kanzi's own
+# this .deb in a bare debian:trixie container with none of Kadenza's own
 # dependencies pre-satisfied by a desktop environment.
 #
 # qt6-svg-plugins is the QImageReader plugin the demo library's placeholder

@@ -13,13 +13,13 @@ Kirigami.Page {
         spacing: Kirigami.Units.largeSpacing
 
         Kirigami.Icon {
-            source: Qt.resolvedUrl("../../data/icons/io.github.timpalpant.kanzi.svg")
+            source: Qt.resolvedUrl("../../data/icons/io.github.timpalpant.kadenza.svg")
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Kirigami.Units.iconSizes.huge
             Layout.preferredHeight: Kirigami.Units.iconSizes.huge
         }
         Kirigami.Heading {
-            text: i18n("Kanzi")
+            text: i18n("Kadenza")
             level: 1
             horizontalAlignment: Text.AlignHCenter
             Layout.fillWidth: true

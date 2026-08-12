@@ -1,17 +1,17 @@
-# Kanzi
+# Kadenza
 
-Kanzi is a native Apple Music client for KDE Plasma, built with Qt 6,
+Kadenza is a native Apple Music client for KDE Plasma, built with Qt 6,
 Kirigami, and KDE Frameworks 6.
 
 ## Screenshots
 
 | Listen Now | Now Playing |
 | --- | --- |
-| [![Kanzi Listen Now view](docs/screenshots/listen-now.png)](docs/screenshots/listen-now.png) | [![Kanzi Now Playing view](docs/screenshots/now-playing.png)](docs/screenshots/now-playing.png) |
+| [![Kadenza Listen Now view](docs/screenshots/listen-now.png)](docs/screenshots/listen-now.png) | [![Kadenza Now Playing view](docs/screenshots/now-playing.png)](docs/screenshots/now-playing.png) |
 
 | Albums | Search |
 | --- | --- |
-| [![Kanzi Albums view](docs/screenshots/albums.png)](docs/screenshots/albums.png) | [![Kanzi search view](docs/screenshots/search.png)](docs/screenshots/search.png) |
+| [![Kadenza Albums view](docs/screenshots/albums.png)](docs/screenshots/albums.png) | [![Kadenza search view](docs/screenshots/search.png)](docs/screenshots/search.png) |
 
 The visible application is native. It talks directly to the Apple Music REST
 API for library and catalog data. Full-track playback is delegated to one
@@ -50,21 +50,21 @@ licenses, so offline playback is not available.
 ## Build
 
 Install Qt 6.8+, KDE Frameworks 6, Kirigami, CMake, Ninja, Node.js 22.12+ and
-npm. Then install the playback runtime and build Kanzi:
+npm. Then install the playback runtime and build Kadenza:
 
 ```sh
 npm --prefix sidecar install
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-./build/kanzi
+./build/kadenza
 ```
 
-Use `KANZI_SHOW_SIDECAR=1 ./build/kanzi` to keep the playback window visible
-while diagnosing MusicKit or DRM problems. `KANZI_SIDECAR=/path/to/sidecar`
+Use `KADENZA_SHOW_SIDECAR=1 ./build/kadenza` to keep the playback window visible
+while diagnosing MusicKit or DRM problems. `KADENZA_SIDECAR=/path/to/sidecar`
 overrides sidecar discovery.
 
-Kanzi looks for its Widevine-enabled Electron runtime in three places, in
-order: `KANZI_ELECTRON=/path/to/electron`, the sidecar's own bundled copy
+Kadenza looks for its Widevine-enabled Electron runtime in three places, in
+order: `KADENZA_ELECTRON=/path/to/electron`, the sidecar's own bundled copy
 (`npm --prefix sidecar install`, above), and `electron43-castlab` on `PATH`
 (the binary installed by the AUR package `electron43-castlab-bin`). Every
 released package -- Arch, .deb, .rpm and Flatpak -- bundles its own copy
@@ -73,19 +73,19 @@ upstream packaging bug (an unsubstituted template placeholder) that makes it
 fail on every launch, so the PATH lookup is really just a fallback for
 source builds.
 
-`KANZI_TRACE=1` echoes the sidecar protocol to stderr, `>>` for commands Kanzi
+`KADENZA_TRACE=1` echoes the sidecar protocol to stderr, `>>` for commands Kadenza
 sends and `<<` for events it receives. The two directions are separate pipes,
 so one can work while the other is silent — which is what a player that plays
 audio but reports nothing looks like.
 
-The checked-in screenshots are captures of Kanzi's built-in, fictional demo
+The checked-in screenshots are captures of Kadenza's built-in, fictional demo
 library. To regenerate one without an Apple account:
 
 ```sh
-mkdir -p /tmp/kanzi-shots && cp ~/.config/kdeglobals /tmp/kanzi-shots/
-XDG_CONFIG_HOME=/tmp/kanzi-shots QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=kde \
-  KANZI_DEMO=1 KANZI_DEMO_PAGE=home \
-  KANZI_SCREENSHOT="$PWD/docs/screenshots/listen-now.png" ./build/kanzi
+mkdir -p /tmp/kadenza-shots && cp ~/.config/kdeglobals /tmp/kadenza-shots/
+XDG_CONFIG_HOME=/tmp/kadenza-shots QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=kde \
+  KADENZA_DEMO=1 KADENZA_DEMO_PAGE=home \
+  KADENZA_SCREENSHOT="$PWD/docs/screenshots/listen-now.png" ./build/kadenza
 ```
 
 `QT_QPA_PLATFORMTHEME=kde` matters: without it the offscreen platform falls back
@@ -99,11 +99,11 @@ circular artist portraits are not exercised by such a capture — `ArtworkImage`
 deliberately falls back to square pictures wherever the scene graph is running
 in software. To capture those, run on a real graphics stack instead
 (`QT_QPA_PLATFORM=xcb QSG_RENDER_LOOP=basic`); the basic render loop keeps
-animations advancing while the window is being grabbed. `KANZI_SCREENSHOT_DELAY`
+animations advancing while the window is being grabbed. `KADENZA_SCREENSHOT_DELAY`
 sets how long to wait, in milliseconds, before grabbing (2500 by default), since
 artwork loads asynchronously and then fades in.
 
-Use `now-playing`, `albums`, or `search` as `KANZI_DEMO_PAGE` to capture the
+Use `now-playing`, `albums`, or `search` as `KADENZA_DEMO_PAGE` to capture the
 other documented views. Demo data, artwork, and lyrics are fictional.
 
 ## Local library cache
@@ -115,8 +115,8 @@ documented as alphabetical with no `sort` parameter, so deriving Recently Added
 from the album library instead would mean paging through the whole thing before
 the first row could be shown.
 
-Kanzi also keeps a SQLite mirror of the library at
-`~/.local/share/kanzi/kanzi.sqlite`. Every library view renders from disk
+Kadenza also keeps a SQLite mirror of the library at
+`~/.local/share/kadenza/kadenza.sqlite`. Every library view renders from disk
 immediately and pages out of SQLite rather than the network. A background
 refresh runs once per launch, again when the cached copy is older than six
 hours, and whenever you press Refresh.
@@ -131,12 +131,12 @@ out deletes the cache.
 
 ## Architecture and security
 
-Kanzi never receives an Apple ID password or two-factor authentication value.
+Kadenza never receives an Apple ID password or two-factor authentication value.
 Apple's form is rendered by Apple inside the sidecar. Navigation is restricted
 to Apple and Apple CDN origins, unnecessary browser permissions are denied,
 and the Music User Token is held in memory rather than written by the native
 application. Apple's browser cookies and web storage are retained in Electron's
-isolated Kanzi profile so a valid session is restored across launches. Using
+isolated Kadenza profile so a valid session is restored across launches. Using
 Sign Out clears that profile data.
 
 Restoring that session needs one extra step. Apple sets its `media-user-token`
@@ -148,7 +148,7 @@ still never leaves Electron's profile.
 
 The sidecar code is derived from
 [Slipmat](https://github.com/SoftARV/Slipmat) by Miguel Rincon and retains its
-copyright notice. Kanzi is not affiliated with or endorsed by Apple.
+copyright notice. Kadenza is not affiliated with or endorsed by Apple.
 
 ## License
 

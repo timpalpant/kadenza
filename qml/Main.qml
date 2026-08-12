@@ -2,12 +2,12 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import io.github.timpalpant.kanzi
+import io.github.timpalpant.kadenza
 
 Kirigami.ApplicationWindow {
     id: root
 
-    title: i18n("Kanzi")
+    title: i18n("Kadenza")
     minimumWidth: Kirigami.Units.gridUnit * 18
     minimumHeight: Kirigami.Units.gridUnit * 28
     width: Kirigami.Units.gridUnit * 64
@@ -267,7 +267,7 @@ Kirigami.ApplicationWindow {
                 onTriggered: root.navigate("settings")
             },
             Kirigami.Action {
-                text: i18n("About Kanzi")
+                text: i18n("About Kadenza")
                 icon.name: "help-about"
                 onTriggered: root.navigate("about")
             }

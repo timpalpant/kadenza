@@ -40,7 +40,7 @@ Kirigami.ScrollablePage {
             }
         }
         QQC2.Label {
-            text: i18n("Playback runs in a separate Widevine-enabled Electron process. Kanzi restarts it automatically a few times; use Retry after fixing the underlying problem.")
+            text: i18n("Playback runs in a separate Widevine-enabled Electron process. Kadenza restarts it automatically a few times; use Retry after fixing the underlying problem.")
             font: Kirigami.Theme.smallFont
             color: Kirigami.Theme.disabledTextColor
             wrapMode: Text.Wrap
@@ -54,12 +54,12 @@ Kirigami.ScrollablePage {
 
         QQC2.Label {
             Kirigami.FormData.label: i18n("Media keys:")
-            text: i18n("Play/Pause, Next and Previous control Kanzi.")
+            text: i18n("Play/Pause, Next and Previous control Kadenza.")
             wrapMode: Text.Wrap
             Layout.maximumWidth: Kirigami.Units.gridUnit * 24
         }
         QQC2.Label {
-            Kirigami.FormData.label: i18n("Show Kanzi:")
+            Kirigami.FormData.label: i18n("Show Kadenza:")
             text: i18nc("Keyboard shortcut", "Meta+Alt+K")
             font.family: "monospace"
         }
@@ -83,7 +83,7 @@ Kirigami.ScrollablePage {
             onClicked: signOutPrompt.open()
         }
         QQC2.Label {
-            text: i18n("Signing out removes Apple Music cookies and local web storage from Kanzi's isolated playback profile.")
+            text: i18n("Signing out removes Apple Music cookies and local web storage from Kadenza's isolated playback profile.")
             font: Kirigami.Theme.smallFont
             color: Kirigami.Theme.disabledTextColor
             wrapMode: Text.Wrap
@@ -96,7 +96,7 @@ Kirigami.ScrollablePage {
     Kirigami.PromptDialog {
         id: signOutPrompt
         title: i18n("Sign Out of Apple Music?")
-        subtitle: i18n("Kanzi will forget this Apple Music session and stop playback. You can sign in again at any time.")
+        subtitle: i18n("Kadenza will forget this Apple Music session and stop playback. You can sign in again at any time.")
         standardButtons: Kirigami.Dialog.Cancel
         customFooterActions: [
             Kirigami.Action {

@@ -1,13 +1,13 @@
 {
-  "name": "kanzi-playback-sidecar",
+  "name": "kadenza-playback-sidecar",
   "version": "0.1.0",
   "private": true,
-  "description": "Invisible MusicKit and Widevine playback engine for Kanzi",
+  "description": "Invisible MusicKit and Widevine playback engine for Kadenza",
   "license": "GPL-3.0-or-later",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "debug": "KANZI_SHOW_SIDECAR=1 electron ."
+    "debug": "KADENZA_SHOW_SIDECAR=1 electron ."
   },
   "devDependencies": {
     "electron": "https://github.com/castlabs/electron-releases#v43.0.0+wvcus"

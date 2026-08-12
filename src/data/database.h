@@ -32,7 +32,7 @@ private:
     int schemaVersion();
     void setSchemaVersion(int version);
 
-    QString m_connectionName = QStringLiteral("kanzi");
+    QString m_connectionName = QStringLiteral("kadenza");
     QString m_lastError;
     bool m_open = false;
 };

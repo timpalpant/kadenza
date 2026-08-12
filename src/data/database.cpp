@@ -79,7 +79,7 @@ bool Database::open(const QString &path)
     if (file.isEmpty()) {
         const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         QDir().mkpath(dir);
-        file = dir + QStringLiteral("/kanzi.sqlite");
+        file = dir + QStringLiteral("/kadenza.sqlite");
     }
 
     QSqlDatabase database = QSqlDatabase::contains(m_connectionName) ? QSqlDatabase::database(m_connectionName)
@@ -88,7 +88,7 @@ bool Database::open(const QString &path)
 
     if (!database.open()) {
         m_lastError = database.lastError().text();
-        qWarning() << "kanzi: cannot open cache" << file << m_lastError;
+        qWarning() << "kadenza: cannot open cache" << file << m_lastError;
         return false;
     }
 
@@ -133,7 +133,7 @@ bool Database::createSchema()
         QSqlQuery query(database);
         if (!query.exec(QLatin1String(statement))) {
             m_lastError = query.lastError().text();
-            qWarning() << "kanzi: schema error" << m_lastError << QLatin1String(statement).left(60);
+            qWarning() << "kadenza: schema error" << m_lastError << QLatin1String(statement).left(60);
             database.rollback();
             return false;
         }

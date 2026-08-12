@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.timpalpant.kanzi</id>
+  <id>io.github.timpalpant.kadenza</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>Kanzi</name>
+  <name>Kadenza</name>
   <summary>A native Apple Music client for KDE Plasma</summary>
   <description>
-    <p>Kanzi brings an adaptive, desktop-integrated Kirigami interface for browsing and listening to Apple Music on KDE Plasma.</p>
+    <p>Kadenza brings an adaptive, desktop-integrated Kirigami interface for browsing and listening to Apple Music on KDE Plasma.</p>
     <p>Browse your library, search the Apple Music catalog, manage a playback queue, and control playback from a native Qt application. Licensed playback runs through an isolated MusicKit and Widevine sidecar.</p>
   </description>
-  <launchable type="desktop-id">io.github.timpalpant.kanzi.desktop</launchable>
-  <provides><binary>kanzi</binary></provides>
-  <url type="homepage">https://timpalpant.github.io/kanzi/</url>
-  <url type="bugtracker">https://github.com/timpalpant/kanzi/issues</url>
+  <launchable type="desktop-id">io.github.timpalpant.kadenza.desktop</launchable>
+  <provides><binary>kadenza</binary></provides>
+  <url type="homepage">https://timpalpant.github.io/kadenza/</url>
+  <url type="bugtracker">https://github.com/timpalpant/kadenza/issues</url>
   <developer id="io.github.timpalpant"><name>Timothy Palpant</name></developer>
   <content_rating type="oars-1.1"/>
   <!-- Tints taken from the application icon; Discover and GNOME Software use
@@ -24,32 +24,22 @@
   <screenshots>
     <screenshot type="default">
       <caption>Listen Now, with recently played and heavy rotation</caption>
-      <image>https://timpalpant.github.io/kanzi/screenshots/listen-now.png</image>
+      <image>https://timpalpant.github.io/kadenza/screenshots/listen-now.png</image>
     </screenshot>
     <screenshot>
       <caption>Now Playing, with synchronized lyrics and the queue</caption>
-      <image>https://timpalpant.github.io/kanzi/screenshots/now-playing.png</image>
+      <image>https://timpalpant.github.io/kadenza/screenshots/now-playing.png</image>
     </screenshot>
     <screenshot>
       <caption>Albums in the library</caption>
-      <image>https://timpalpant.github.io/kanzi/screenshots/albums.png</image>
+      <image>https://timpalpant.github.io/kadenza/screenshots/albums.png</image>
     </screenshot>
     <screenshot>
       <caption>Grouped Apple Music catalog search</caption>
-      <image>https://timpalpant.github.io/kanzi/screenshots/search.png</image>
+      <image>https://timpalpant.github.io/kadenza/screenshots/search.png</image>
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.1.2" date="2026-08-12">
-      <description><p>Bundle Electron in the Arch package instead of
-      depending on the AUR package electron43-castlab-bin, whose launcher
-      script fails on every launch due to an upstream packaging bug.</p></description>
-    </release>
-    <release version="0.1.1" date="2026-08-12">
-      <description><p>Fix the Arch package looking for the wrong Electron
-      binary name on PATH, so playback failed even with the dependency
-      installed.</p></description>
-    </release>
     <release version="0.1.0" date="2026-08-12">
       <description><p>Initial release.</p></description>
     </release>
