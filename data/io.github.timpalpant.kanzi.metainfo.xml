@@ -40,6 +40,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.1" date="2026-08-12">
+      <description><p>Fix the Arch package looking for the wrong Electron
+      binary name on PATH, so playback failed even with the dependency
+      installed.</p></description>
+    </release>
     <release version="0.1.0" date="2026-08-12">
       <description><p>Initial release.</p></description>
     </release>

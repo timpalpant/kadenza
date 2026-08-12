@@ -20,12 +20,18 @@ namespace {
 constexpr qint64 kLongestPreviewMs = 95000;
 constexpr int kMaxSidecarRestarts = 5;
 constexpr int kSidecarRestartBaseMs = 1000;
-// Name of the system Electron the Arch package depends on instead of
+// Name of the system Electron binary the Arch package depends on instead of
 // bundling. Must track sidecar/package.json's pinned Electron version and
 // packaging/arch/kanzi/PKGBUILD's `depends`: the sidecar is built against a
 // specific castlabs Electron+Widevine build, and a version drift here would
 // not fail loudly -- it would just run against whatever is on PATH.
-constexpr auto kSystemElectron = "electron43-castlab-bin";
+//
+// Deliberately NOT "electron43-castlab-bin" -- that is only the AUR package
+// name (the "-bin" suffix is AUR's naming convention for a prebuilt-binary
+// package). The executable it actually installs to PATH is
+// "electron43-castlab" (confirmed via `pacman -Ql electron43-castlab-bin`),
+// matching its `Provides: electron43-castlab=...`.
+constexpr auto kSystemElectron = "electron43-castlab";
 } // namespace
 
 PlayerController::PlayerController(QObject *parent)

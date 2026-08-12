@@ -1,7 +1,7 @@
 # Maintainer: Tim Palpant <tim@palpant.us>
 
 pkgname=kanzi
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Native Apple Music client for KDE Plasma"
 arch=('x86_64')

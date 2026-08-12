@@ -321,11 +321,21 @@ jobs:
           body: |
             ### Install
 
-            **Arch Linux** — install the attached package directly:
+            **Arch Linux** — this package depends on `electron43-castlab-bin`
+            from the AUR, which `pacman -U` cannot resolve on its own (`-U`
+            installs a local file and only ever consults the sync repos, not
+            the AUR — that resolution only happens when an AUR helper installs
+            a package by name). Install that dependency with an AUR helper
+            first, then install the attached package:
 
             ```sh
+            yay -S electron43-castlab-bin
             sudo pacman -U kanzi-*.pkg.tar.zst
             ```
+
+            Kanzi isn't on the AUR itself yet (new-package submissions are
+            currently closed) — once that reopens, `yay -S kanzi` will resolve
+            this automatically and become the recommended install method.
 
             **Debian / Ubuntu** — download the attached `.deb`, then:
 
