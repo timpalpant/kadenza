@@ -42,6 +42,10 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.1" date="2026-08-12">
+      <description><p>Redraw the icon as a tapered fermata over a round dot,
+      closer to the shape engraved notation uses.</p></description>
+    </release>
     <release version="0.1.0" date="2026-08-12">
       <description><p>Initial release.</p></description>
     </release>
