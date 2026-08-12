@@ -15,11 +15,13 @@
   <url type="bugtracker">https://github.com/timpalpant/kadenza/issues</url>
   <developer id="io.github.timpalpant"><name>Timothy Palpant</name></developer>
   <content_rating type="oars-1.1"/>
-  <!-- Tints taken from the application icon; Discover and GNOME Software use
-       them behind the app header. -->
+  <!-- Tints taken from the application icon's plate, #ff7d8c to #e01046:
+       the light one washed towards white, the dark one towards black.
+       Discover and GNOME Software use them behind the app header, so they
+       want re-deriving whenever the icon's palette moves. -->
   <branding>
-    <color type="primary" scheme_preference="light">#ffd7c6</color>
-    <color type="primary" scheme_preference="dark">#5c1136</color>
+    <color type="primary" scheme_preference="light">#ffdee2</color>
+    <color type="primary" scheme_preference="dark">#5a0d24</color>
   </branding>
   <screenshots>
     <screenshot type="default">
