@@ -25,6 +25,14 @@ target_link_libraries(kadenza-apipaths-tests PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME apipaths COMMAND kadenza-apipaths-tests)
 
 
+qt_add_executable(kadenza-queueids-tests
+    queueidstest.cpp
+    ../src/player/queueids.cpp ../src/player/queueids.h)
+target_include_directories(kadenza-queueids-tests PRIVATE ../src/player)
+target_link_libraries(kadenza-queueids-tests PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME queueids COMMAND kadenza-queueids-tests)
+
+
 qt_add_executable(kadenza-sync-tests
     librarysyncworkertest.cpp
     ../src/data/database.cpp ../src/data/database.h

@@ -39,6 +39,7 @@ qt_add_executable(kadenza
     src/media/mediaitem.cpp src/media/mediaitem.h
     src/media/mediamodel.cpp src/media/mediamodel.h
     src/player/playercontroller.cpp src/player/playercontroller.h
+    src/player/queueids.cpp src/player/queueids.h
     src/player/mprisplayer.cpp src/player/mprisplayer.h
 )
 

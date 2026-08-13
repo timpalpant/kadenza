@@ -1,4 +1,5 @@
 #include "playercontroller.h"
+#include "queueids.h"
 
 #include <cstdio>
 
@@ -398,8 +399,12 @@ void PlayerController::handleEvent(const QJsonObject &object)
                 ids.push_back(playbackId);
         }
         m_queue.replaceItems(std::move(items));
-        if (!ids.isEmpty() && ids != m_savedQueueIds) {
-            m_savedQueueIds = ids;
+        // A station reports itself as its own queue, which setQueue cannot
+        // resolve on the next launch. Dropping it here stops the clear that
+        // playStation() already performed from being quietly undone.
+        const QStringList restorableIds = QueueIds::restorable(ids);
+        if (!restorableIds.isEmpty() && restorableIds != m_savedQueueIds) {
+            m_savedQueueIds = restorableIds;
             m_stateDirty = true;
         }
     } else if (event == QStringLiteral("lyrics")) {
@@ -664,6 +669,15 @@ void PlayerController::restorePlayerState()
     if (!m_restorePending || m_savedQueueIds.isEmpty())
         return;
     m_restorePending = false;
+    // Also filtered on the way out, so a queue persisted by an earlier build
+    // repairs itself instead of raising the same error on every launch.
+    m_savedQueueIds = QueueIds::restorable(m_savedQueueIds);
+    if (m_savedQueueIds.isEmpty()) {
+        m_savedQueueIndex = 0;
+        m_savedPositionMs = 0;
+        m_stateDirty = true;
+        return;
+    }
     QJsonArray songs;
     for (const auto &id : std::as_const(m_savedQueueIds))
         songs.append(id);
