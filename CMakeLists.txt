@@ -49,10 +49,13 @@ target_include_directories(kadenza PRIVATE
 target_compile_definitions(kadenza PRIVATE
     KADENZA_SOURCE_SIDECAR="${CMAKE_CURRENT_SOURCE_DIR}/sidecar")
 
+set_source_files_properties(qml/Pages.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(kadenza
     URI io.github.timpalpant.kadenza
     VERSION 1.0
     QML_FILES
+        qml/Pages.qml
         qml/Main.qml
         qml/pages/LoginPage.qml
         qml/pages/HomePage.qml
@@ -68,9 +71,15 @@ qt_add_qml_module(kadenza
         qml/pages/SettingsPage.qml
         qml/pages/AboutPage.qml
         qml/components/ArtworkImage.qml
+        qml/components/ArtistDetail.qml
+        qml/components/DetailTrackList.qml
+        qml/components/GenreFilter.qml
+        qml/components/MediaContextMenu.qml
         qml/components/MediaDelegate.qml
         qml/components/MediaGridDelegate.qml
         qml/components/PlayerBar.qml
+        qml/components/QueueDragDrop.qml
+        qml/components/SearchSection.qml
         qml/components/SeekSlider.qml
         qml/components/EdgeSeekBar.qml
         qml/components/MediaGrid.qml

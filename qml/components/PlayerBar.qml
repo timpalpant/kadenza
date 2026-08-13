@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import io.github.timpalpant.kadenza as Kadenza
 
 // Progress runs along the top edge of the bar rather than inline, which frees
 // the row of the one element that wanted unbounded width. What is left is three
@@ -107,7 +108,7 @@ QQC2.ToolBar {
 
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler {
-                        onTapped: applicationWindow().navigate("now-playing")
+                        onTapped: applicationWindow().navigate(Kadenza.Pages.nowPlaying)
                     }
                 }
             }
@@ -263,8 +264,8 @@ QQC2.ToolBar {
                     icon.name: "media-playlist-append"
                     display: QQC2.AbstractButton.IconOnly
                     checkable: true
-                    checked: applicationWindow().currentPage === "queue"
-                    onClicked: applicationWindow().navigate("queue")
+                    checked: applicationWindow().currentPage === Kadenza.Pages.queue
+                    onClicked: applicationWindow().navigate(Kadenza.Pages.queue)
                     QQC2.ToolTip.visible: hovered
                     QQC2.ToolTip.text: text
                 }

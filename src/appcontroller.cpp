@@ -186,13 +186,14 @@ AppController::AppController(QObject *parent)
 
 AppController::~AppController()
 {
-    if (!m_syncThread.isRunning())
-        return;
-    // Close the worker's SQLite handle on the worker's own thread; a
-    // QSqlDatabase outliving its thread warns at shutdown.
-    QMetaObject::invokeMethod(m_syncWorker, &LibrarySyncWorker::releaseDatabase, Qt::BlockingQueuedConnection);
-    m_syncThread.quit();
-    m_syncThread.wait();
+    if (m_syncThread.isRunning()) {
+        // Close the worker's SQLite handle on the worker's own thread; a
+        // QSqlDatabase outliving its thread warns at shutdown.
+        QMetaObject::invokeMethod(m_syncWorker, &LibrarySyncWorker::releaseDatabase, Qt::BlockingQueuedConnection);
+        m_syncThread.quit();
+        m_syncThread.wait();
+    }
+    Database::instance().close();
 }
 
 AppController *AppController::create(QQmlEngine *, QJSEngine *)

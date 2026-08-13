@@ -126,139 +126,33 @@ Kirigami.ScrollablePage {
         width: page.availableWidth
         spacing: Kirigami.Units.largeSpacing
 
-        Kirigami.Heading {
-            text: i18n("Artists")
-            level: 2
-            visible: App.searchArtistsModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Artists")
             model: App.searchArtistsModel
-            orientation: ListView.Horizontal
-            // Only claim horizontal drags, so a vertical flick still scrolls
-            // the page underneath instead of being swallowed by the row.
-            flickableDirection: Flickable.HorizontalFlick
-            spacing: Kirigami.Units.smallSpacing
-            clip: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.tileWidth * 0.75 + page.labelHeight
-            delegate: MediaGridDelegate {
-                width: page.tileWidth * 0.75
-                height: page.tileWidth * 0.75 + page.labelHeight
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
-            }
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
+            tileWidth: page.tileWidth * 0.75
         }
-
-        Kirigami.Heading {
-            text: i18n("Albums")
-            level: 2
-            visible: App.searchAlbumsModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Albums")
             model: App.searchAlbumsModel
-            orientation: ListView.Horizontal
-            flickableDirection: Flickable.HorizontalFlick
-            spacing: Kirigami.Units.smallSpacing
-            clip: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.tileWidth + page.labelHeight
-            delegate: MediaGridDelegate {
-                width: page.tileWidth
-                height: page.tileWidth + page.labelHeight
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
-            }
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
         }
-
-        Kirigami.Heading {
-            text: i18n("Songs")
-            level: 2
-            visible: App.searchSongsModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Songs")
             model: App.searchSongsModel
+            horizontal: false
             interactive: false
-            reuseItems: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: contentHeight
-            delegate: MediaDelegate {
-                onPlayRequested: App.playModel(App.searchSongsModel, index)
-                onOpenRequested: {}
-            }
+            delegateConfig: Component { MediaDelegate { onPlayRequested: App.playModel(App.searchSongsModel, index); onOpenRequested: {} } }
         }
-
-        Kirigami.Heading {
-            text: i18n("Playlists")
-            level: 2
-            visible: App.searchPlaylistsModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Playlists")
             model: App.searchPlaylistsModel
-            orientation: ListView.Horizontal
-            flickableDirection: Flickable.HorizontalFlick
-            spacing: Kirigami.Units.smallSpacing
-            clip: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.tileWidth + page.labelHeight
-            delegate: MediaGridDelegate {
-                width: page.tileWidth
-                height: page.tileWidth + page.labelHeight
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
-            }
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
         }
-
-        Kirigami.Heading {
-            text: i18n("Curators")
-            level: 2
-            visible: App.searchCuratorsModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Curators")
             model: App.searchCuratorsModel
-            orientation: ListView.Horizontal
-            flickableDirection: Flickable.HorizontalFlick
-            spacing: Kirigami.Units.smallSpacing
-            clip: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.tileWidth + page.labelHeight
-            delegate: MediaGridDelegate {
-                width: page.tileWidth
-                height: page.tileWidth + page.labelHeight
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
-            }
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
         }
-
-        Kirigami.Heading {
-            text: i18n("Activities")
-            level: 2
-            visible: App.searchActivitiesModel.count > 0
-        }
-        ListView {
+        SearchSection {
+            heading: i18n("Activities")
             model: App.searchActivitiesModel
-            orientation: ListView.Horizontal
-            flickableDirection: Flickable.HorizontalFlick
-            spacing: Kirigami.Units.smallSpacing
-            clip: true
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.tileWidth + page.labelHeight
-            delegate: MediaGridDelegate {
-                width: page.tileWidth
-                height: page.tileWidth + page.labelHeight
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
-                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
-            }
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
         }
 
         Kirigami.PlaceholderMessage {

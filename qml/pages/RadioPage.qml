@@ -55,30 +55,14 @@ Kirigami.ScrollablePage {
             level: 2
             visible: App.liveStationsModel.count > 0
         }
-        Flow {
-            visible: App.liveStationsModel.count > 0 && App.stationGenres.length > 0
+        GenreFilter {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
-            QQC2.Button {
-                text: i18n("All Genres")
-                checkable: true
-                checked: page.selectedGenre.length === 0
-                onClicked: {
-                    page.selectedGenre = "";
-                    App.loadLiveStations();
-                }
-            }
-            Repeater {
-                model: App.stationGenres
-                QQC2.Button {
-                    text: modelData.name
-                    checkable: true
-                    checked: page.selectedGenre === modelData.id
-                    onClicked: {
-                        page.selectedGenre = modelData.id;
-                        App.loadLiveStations(modelData.id);
-                    }
-                }
+            visible: App.liveStationsModel.count > 0 && App.stationGenres.length > 0
+            model: App.stationGenres
+            selectedId: page.selectedGenre
+            onGenreSelected: id => {
+                page.selectedGenre = id;
+                App.loadLiveStations(id);
             }
         }
         MediaGrid {

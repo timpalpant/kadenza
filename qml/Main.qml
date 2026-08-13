@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import io.github.timpalpant.kadenza
+import io.github.timpalpant.kadenza as Kadenza
 
 Kirigami.ApplicationWindow {
     id: root
@@ -13,15 +13,15 @@ Kirigami.ApplicationWindow {
     width: Kirigami.Units.gridUnit * 64
     height: Kirigami.Units.gridUnit * 42
 
-    readonly property string initialPageKey: App.authenticated ? App.lastPage : "login"
+    readonly property string initialPageKey: App.authenticated ? App.lastPage : Kadenza.Pages.login
     property string currentPage: initialPageKey
     property var navigationHistory: [initialPageKey]
     // Destinations reachable from the sidebar. Everything else (detail pages)
     // stacks on top of whichever one is showing.
-    readonly property var topLevelPages: ["home", "now-playing", "recently-added",
-                                          "songs", "albums", "artists", "playlists",
-                                          "search", "charts", "radio", "replay", "queue",
-                                          "settings", "about"]
+    readonly property var topLevelPages: [Kadenza.Pages.home, Kadenza.Pages.nowPlaying, Kadenza.Pages.recentlyAdded,
+                                          Kadenza.Pages.songs, Kadenza.Pages.albums, Kadenza.Pages.artists, Kadenza.Pages.playlists,
+                                          Kadenza.Pages.search, Kadenza.Pages.charts, Kadenza.Pages.radio, Kadenza.Pages.replay, Kadenza.Pages.queue,
+                                          Kadenza.Pages.settings, Kadenza.Pages.about]
     property string pendingPlaylistSongId: ""
     readonly property bool compactMode: width < Kirigami.Units.gridUnit * 40
     // Wide enough for the longest destination ("Recently Added") at the default
@@ -50,23 +50,23 @@ Kirigami.ApplicationWindow {
 
     function componentFor(key) {
         switch (key) {
-        case "login": return loginPage;
-        case "home": return homePage;
-        case "now-playing": return nowPlayingPage;
-        case "recently-added": return recentlyAddedPage;
-        case "songs": return songsPage;
-        case "albums": return albumsPage;
-        case "artists": return artistsPage;
-        case "playlists": return playlistsPage;
-        case "search": return searchPage;
-        case "charts": return chartsPage;
-        case "radio": return radioPage;
-        case "replay": return replayPage;
-        case "queue": return queuePage;
-        case "settings": return settingsPage;
-        case "about": return aboutPage;
-        case "detail": return detailPage;
-        case "playlist-folder": return playlistFolderPage;
+        case Kadenza.Pages.login: return loginPage;
+        case Kadenza.Pages.home: return homePage;
+        case Kadenza.Pages.nowPlaying: return nowPlayingPage;
+        case Kadenza.Pages.recentlyAdded: return recentlyAddedPage;
+        case Kadenza.Pages.songs: return songsPage;
+        case Kadenza.Pages.albums: return albumsPage;
+        case Kadenza.Pages.artists: return artistsPage;
+        case Kadenza.Pages.playlists: return playlistsPage;
+        case Kadenza.Pages.search: return searchPage;
+        case Kadenza.Pages.charts: return chartsPage;
+        case Kadenza.Pages.radio: return radioPage;
+        case Kadenza.Pages.replay: return replayPage;
+        case Kadenza.Pages.queue: return queuePage;
+        case Kadenza.Pages.settings: return settingsPage;
+        case Kadenza.Pages.about: return aboutPage;
+        case Kadenza.Pages.detail: return detailPage;
+        case Kadenza.Pages.playlistFolder: return playlistFolderPage;
         }
         return null;
     }
@@ -142,7 +142,7 @@ Kirigami.ApplicationWindow {
 
     function openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork) {
         App.openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork);
-        navigate("detail");
+        navigate(Kadenza.Pages.detail);
     }
 
     // Most Apple responses omit the artist and album relationships, so an id
@@ -166,12 +166,12 @@ Kirigami.ApplicationWindow {
 
     function openPlaylistFolder(folderId) {
         App.loadPlaylistFolder(folderId);
-        navigate("playlist-folder");
+        navigate(Kadenza.Pages.playlistFolder);
     }
 
     Connections {
         target: App
-        function onDetailOpened() { root.navigate("detail"); }
+        function onDetailOpened() { root.navigate(Kadenza.Pages.detail); }
     }
 
     function showAddToPlaylist(songId) {
@@ -192,8 +192,8 @@ Kirigami.ApplicationWindow {
     Connections {
         target: App
         function onAuthenticatedChanged() {
-            if (App.authenticated && root.currentPage === "login") root.resetNavigation(App.lastPage);
-            else if (!App.authenticated) root.resetNavigation("login");
+            if (App.authenticated && root.currentPage === Kadenza.Pages.login) root.resetNavigation(App.lastPage);
+            else if (!App.authenticated) root.resetNavigation(Kadenza.Pages.login);
         }
     }
 
@@ -219,51 +219,51 @@ Kirigami.ApplicationWindow {
                 text: i18n("Listen Now")
                 icon.name: "audio-headphones"
                 checkable: true
-                checked: root.currentPage === "home"
-                onTriggered: root.navigate("home")
+                checked: root.currentPage === Kadenza.Pages.home
+                onTriggered: root.navigate(Kadenza.Pages.home)
             },
             Kirigami.Action {
                 text: i18n("Now Playing")
                 icon.name: "media-album-cover"
                 enabled: App.player.title.length > 0
                 checkable: true
-                checked: root.currentPage === "now-playing"
-                onTriggered: root.navigate("now-playing")
+                checked: root.currentPage === Kadenza.Pages.nowPlaying
+                onTriggered: root.navigate(Kadenza.Pages.nowPlaying)
             },
             Kirigami.Action {
                 text: i18n("Recently Added")
                 icon.name: "document-open-recent"
                 checkable: true
-                checked: root.currentPage === "recently-added"
-                onTriggered: root.navigate("recently-added")
+                checked: root.currentPage === Kadenza.Pages.recentlyAdded
+                onTriggered: root.navigate(Kadenza.Pages.recentlyAdded)
             },
             Kirigami.Action {
                 text: i18n("Songs")
                 icon.name: "view-media-track"
                 checkable: true
-                checked: root.currentPage === "songs"
-                onTriggered: root.navigate("songs")
+                checked: root.currentPage === Kadenza.Pages.songs
+                onTriggered: root.navigate(Kadenza.Pages.songs)
             },
             Kirigami.Action {
                 text: i18n("Albums")
                 icon.name: "view-media-album-cover"
                 checkable: true
-                checked: root.currentPage === "albums"
-                onTriggered: root.navigate("albums")
+                checked: root.currentPage === Kadenza.Pages.albums
+                onTriggered: root.navigate(Kadenza.Pages.albums)
             },
             Kirigami.Action {
                 text: i18n("Artists")
                 icon.name: "view-media-artist"
                 checkable: true
-                checked: root.currentPage === "artists"
-                onTriggered: root.navigate("artists")
+                checked: root.currentPage === Kadenza.Pages.artists
+                onTriggered: root.navigate(Kadenza.Pages.artists)
             },
             Kirigami.Action {
                 text: i18n("Playlists")
                 icon.name: "view-media-playlist"
                 checkable: true
-                checked: root.currentPage === "playlists"
-                onTriggered: root.navigate("playlists")
+                checked: root.currentPage === Kadenza.Pages.playlists
+                onTriggered: root.navigate(Kadenza.Pages.playlists)
             },
             Kirigami.Action {
                 separator: true
@@ -273,36 +273,36 @@ Kirigami.ApplicationWindow {
                 icon.name: "search"
                 shortcut: "Ctrl+F"
                 checkable: true
-                checked: root.currentPage === "search"
-                onTriggered: root.navigate("search")
+                checked: root.currentPage === Kadenza.Pages.search
+                onTriggered: root.navigate(Kadenza.Pages.search)
             },
             Kirigami.Action {
                 text: i18n("Charts")
                 icon.name: "office-chart-bar"
                 checkable: true
-                checked: root.currentPage === "charts"
-                onTriggered: root.navigate("charts")
+                checked: root.currentPage === Kadenza.Pages.charts
+                onTriggered: root.navigate(Kadenza.Pages.charts)
             },
             Kirigami.Action {
                 text: i18n("Radio")
                 icon.name: "radio"
                 checkable: true
-                checked: root.currentPage === "radio"
-                onTriggered: root.navigate("radio")
+                checked: root.currentPage === Kadenza.Pages.radio
+                onTriggered: root.navigate(Kadenza.Pages.radio)
             },
             Kirigami.Action {
                 text: i18n("Replay")
                 icon.name: "view-calendar-year"
                 checkable: true
-                checked: root.currentPage === "replay"
-                onTriggered: root.navigate("replay")
+                checked: root.currentPage === Kadenza.Pages.replay
+                onTriggered: root.navigate(Kadenza.Pages.replay)
             },
             Kirigami.Action {
                 text: i18n("Queue")
                 icon.name: "media-playlist-append"
                 checkable: true
-                checked: root.currentPage === "queue"
-                onTriggered: root.navigate("queue")
+                checked: root.currentPage === Kadenza.Pages.queue
+                onTriggered: root.navigate(Kadenza.Pages.queue)
             },
             Kirigami.Action {
                 separator: true
@@ -310,12 +310,12 @@ Kirigami.ApplicationWindow {
             Kirigami.Action {
                 text: i18n("Settings")
                 icon.name: "settings-configure"
-                onTriggered: root.navigate("settings")
+                onTriggered: root.navigate(Kadenza.Pages.settings)
             },
             Kirigami.Action {
                 text: i18n("About Kadenza")
                 icon.name: "help-about"
-                onTriggered: root.navigate("about")
+                onTriggered: root.navigate(Kadenza.Pages.about)
             }
         ]
 

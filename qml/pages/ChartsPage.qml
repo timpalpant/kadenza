@@ -31,30 +31,13 @@ Kirigami.ScrollablePage {
         width: page.availableWidth
         spacing: Kirigami.Units.largeSpacing
 
-        Flow {
-            visible: App.genres.length > 0
+        GenreFilter {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
-            QQC2.Button {
-                text: i18n("All Genres")
-                checkable: true
-                checked: page.selectedGenre.length === 0
-                onClicked: {
-                    page.selectedGenre = "";
-                    App.loadCharts(true, "");
-                }
-            }
-            Repeater {
-                model: App.genres
-                QQC2.Button {
-                    text: modelData.name
-                    checkable: true
-                    checked: page.selectedGenre === modelData.id
-                    onClicked: {
-                        page.selectedGenre = modelData.id;
-                        App.loadCharts(true, modelData.id);
-                    }
-                }
+            model: App.genres
+            selectedId: page.selectedGenre
+            onGenreSelected: id => {
+                page.selectedGenre = id;
+                App.loadCharts(true, id);
             }
         }
 

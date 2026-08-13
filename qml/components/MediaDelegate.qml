@@ -183,123 +183,26 @@ QQC2.ItemDelegate {
             icon.name: "application-menu"
             text: i18n("More Options")
             display: QQC2.AbstractButton.IconOnly
-            onClicked: menuLoader.popup()
-            // Eleven controls wrapped in a Popup, built for every row in the
-            // list whether or not the overflow button is ever pressed. On
-            // long track lists that cost more than the rows themselves, so
-            // the menu is built on first use instead.
-            Loader {
-                id: menuLoader
-                active: false
-                sourceComponent: menuComponent
-                onLoaded: item.popup()
-                function popup() {
-                    if (active) {
-                        item.popup();
-                    } else {
-                        active = true; // onLoaded pops it
-                    }
-                }
-            }
-            Component {
-                id: menuComponent
-                QQC2.Menu {
-                QQC2.MenuItem {
-                    text: i18n("Play Next")
-                    enabled: root.playable
-                    onTriggered: App.player.playNext(root.catalogId || root.mediaId)
-                }
-                QQC2.MenuSeparator { visible: root.song }
-                QQC2.MenuItem {
-                    visible: root.song
-                    text: root.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
-                    icon.name: root.favorite ? "rating-unrated" : "rating"
-                    onTriggered: App.setFavorite(root.catalogId || root.mediaId, root.mediaType, !root.favorite)
-                }
-                QQC2.MenuItem {
-                    visible: root.song
-                    text: root.inLibrary ? i18n("Remove from Library") : i18n("Add to Library")
-                    icon.name: root.inLibrary ? "list-remove" : "list-add"
-                    onTriggered: App.setInLibrary(root.inLibrary ? root.mediaId : (root.catalogId || root.mediaId), root.mediaType, !root.inLibrary)
-                }
-                QQC2.MenuItem {
-                    visible: root.song
-                    text: root.rating > 0 ? i18n("Loved") : i18n("Love")
-                    icon.name: "love"
-                    checkable: true
-                    checked: root.rating > 0
-                    // Choosing the current rating again clears it.
-                    onTriggered: App.setRating(root.catalogId || root.mediaId,
-                                               root.mediaType,
-                                               root.rating > 0 ? 0 : 1)
-                }
-                QQC2.MenuItem {
-                    visible: root.song
-                    text: root.rating < 0 ? i18n("Disliked") : i18n("Dislike")
-                    icon.name: "dialog-cancel"
-                    checkable: true
-                    checked: root.rating < 0
-                    onTriggered: App.setRating(root.catalogId || root.mediaId,
-                                               root.mediaType,
-                                               root.rating < 0 ? 0 : -1)
-                }
-                QQC2.MenuSeparator { visible: root.song }
-                QQC2.MenuItem {
-                    visible: root.song
-                    text: i18n("Add to Playlist…")
-                    icon.name: "view-media-playlist"
-                    onTriggered: applicationWindow().showAddToPlaylist(root.catalogId || root.mediaId)
-                }
-                QQC2.MenuSeparator { visible: root.queueMode }
-                QQC2.MenuItem {
-                    visible: root.queueMode
-                    text: i18n("Move Up")
-                    enabled: root.index > 0
-                    onTriggered: App.player.moveQueueItem(root.index, root.index - 1)
-                }
-                QQC2.MenuItem {
-                    visible: root.queueMode
-                    text: i18n("Move Down")
-                    // Attached on the delegate root, not here: ListView only
-                    // attaches to the item it instantiates.
-                    enabled: root.ListView.view
-                             && root.index < root.ListView.view.count - 1
-                    onTriggered: App.player.moveQueueItem(root.index, root.index + 1)
-                }
-                QQC2.MenuItem {
-                    visible: root.queueMode
-                    text: i18n("Remove from Queue")
-                    icon.name: "edit-delete"
-                    onTriggered: App.player.removeQueueItem(root.index)
-                }
-                QQC2.MenuItem {
-                    text: i18n("Play Later")
-                    enabled: root.playable
-                    onTriggered: App.player.playLater(root.catalogId || root.mediaId)
-                }
-                QQC2.MenuItem {
-                    text: i18n("Open")
-                    visible: !root.song
-                    onTriggered: root.openRequested()
-                }
-                }
+            onClicked: menu.open()
+            MediaContextMenu {
+                id: menu
+                index: root.index
+                mediaId: root.mediaId
+                catalogId: root.catalogId
+                mediaType: root.mediaType
+                playable: root.playable
+                favorite: root.favorite
+                inLibrary: root.inLibrary
+                rating: root.rating
+                queueMode: root.queueMode
             }
         }
     }
 
-    DragHandler {
-        id: dragHandler
-        enabled: root.queueMode
-    }
-    Drag.active: dragHandler.active
-    Drag.source: root
-    Drag.hotSpot.x: width / 2
-    Drag.hotSpot.y: height / 2
-    DropArea {
+    QueueDragDrop {
         anchors.fill: parent
         enabled: root.queueMode
-        onDropped: drop => {
-            const source = drop.source;
+        onDropped: source => {
             if (source && source.index !== root.index)
                 App.player.moveQueueItem(source.index, root.index);
         }

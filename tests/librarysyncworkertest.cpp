@@ -46,6 +46,7 @@ private slots:
     void initTestCase();
     void writesPagesFromAWorkerThread();
     void reportsMalformedPages();
+    void syncEpochSemantics();
     void cleanupTestCase();
 
 private:
@@ -120,6 +121,52 @@ void LibrarySyncWorkerTest::reportsMalformedPages()
 
     // The epoch is reported back so a stale reply cannot end a newer sync.
     QCOMPARE(failed.constLast().at(1).toLongLong(), epoch);
+}
+
+void LibrarySyncWorkerTest::syncEpochSemantics()
+{
+    QSignalSpy ingested(m_worker, &LibrarySyncWorker::pageIngested);
+    QSignalSpy finished(m_worker, &LibrarySyncWorker::syncFinished);
+
+    // First sync writes three items.
+    const qint64 epoch1 = m_cache.beginSync(kAlbums);
+    Q_EMIT ingestRequested(kAlbums, epoch1, 0, page({QStringLiteral("A"), QStringLiteral("B")}));
+    QVERIFY(ingested.wait());
+    Q_EMIT ingestRequested(kAlbums, epoch1, 2, page({QStringLiteral("C")}));
+    QTRY_COMPARE(ingested.count(), 2);
+    Q_EMIT finishRequested(kAlbums, epoch1);
+    QVERIFY(finished.wait());
+
+    auto items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
+    QCOMPARE(items.size(), 3);
+
+    // Second sync starts with a new epoch and only writes one item, then is
+    // abandoned without finishing.
+    const qint64 epoch2 = m_cache.beginSync(kAlbums);
+    Q_EMIT ingestRequested(kAlbums, epoch2, 0, page({QStringLiteral("X")}));
+    QVERIFY(ingested.wait());
+
+    items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
+    // The row from the second sync is present but not yet committed.
+    QCOMPARE(items.size(), 4);
+
+    // Abandoning without finishSync must leave the previous contents intact.
+    // Simulate abandon by starting a new sync which increments the epoch.
+    const qint64 epoch3 = m_cache.beginSync(kAlbums);
+    QVERIFY(epoch3 > epoch2);
+
+    items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
+    // Before finishing epoch3 there are no rows with that epoch, so the old
+    // rows remain.
+    QCOMPARE(items.size(), 4);
+
+    // Now finish the third sync without ingesting any pages: it should drop
+    // everything left at older epochs.
+    Q_EMIT finishRequested(kAlbums, epoch3);
+    QVERIFY(finished.wait());
+
+    items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
+    QCOMPARE(items.size(), 0);
 }
 
 QTEST_MAIN(LibrarySyncWorkerTest)
