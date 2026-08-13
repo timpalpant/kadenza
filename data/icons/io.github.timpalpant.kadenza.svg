@@ -18,16 +18,18 @@
        shape; a uniform stroke survives downsampling better if this ever needs
        to read at 16px more than it needs to read as a fermata.
 
-       Centring is by bounding box, not by eye: the crescent runs y=33 to y=90,
-       whose midpoint is 61.5, so the whole mark is nudged down 2.5 to sit on
-       the plate's centre of 64. Move the arc and the dot together, or re-run
-       that sum — changing one alone drifts the mark off centre.
+       The dot is placed by eye rather than by arithmetic. The cavity is an
+       arch, wider at its base than at its crown, so its visual mass sits below
+       its bounding-box centre of 74.5, and a dot centred there reads as riding
+       high. It sits at 83.25 instead, low enough that the arc reads as holding
+       it rather than hovering over it.
 
-       The dot is the exception, and is placed by eye rather than by arithmetic.
-       The cavity is an arch, wider at its base than at its crown, so its
-       visual mass sits below its bounding-box centre of 74.5; a dot centred
-       there reads as riding high. Dropping it to 79.5 balances it against the
-       arc above and the open span below.
+       That is low enough to hang 0.5 below the arc's tips, so the mark's
+       bottom edge is the dot's and not the crescent's: y=33 down to y=90.5,
+       midpoint 61.75, hence the 2.25 nudge that lands the whole mark on the
+       plate's centre of 64. Both numbers move if either shape does — lower the
+       dot again and the bottom edge, the midpoint and the nudge all shift with
+       it.
 
        The warm plate is a nod to Apple Music, whose catalog this plays, and
        stops short of its actual mark: a client should read as compatible with
@@ -41,8 +43,8 @@
     </linearGradient>
   </defs>
   <rect x="8" y="8" width="112" height="112" rx="27" fill="url(#plate)"/>
-  <g transform="translate(0,2.5)">
+  <g transform="translate(0,2.25)">
     <path d="M25,90 C25,14 103,14 103,90 L98,90 C98,42 30,42 30,90 Z" fill="#ffffff"/>
-    <circle cx="64" cy="77" r="9.5" fill="#ffffff"/>
+    <circle cx="64" cy="81" r="9.5" fill="#ffffff"/>
   </g>
 </svg>
