@@ -1,7 +1,7 @@
 # Maintainer: Tim Palpant <tim@palpant.us>
 
 pkgname=kadenza
-pkgver=0.1.1
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Native Apple Music client for KDE Plasma"
 arch=('x86_64')
@@ -33,7 +33,7 @@ license=('GPL-3.0-or-later')
 depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig' 'knotifications' 'kglobalaccel' 'glibc' 'qqc2-desktop-style' 'gtk3' 'nss')
 makedepends=('cmake' 'ninja' 'nodejs' 'npm')
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
-sha256sums=('4cef0832a39b670506e976c2ac3e935cea3962e299afbf739aa8cf7cc6b72357')
+sha256sums=('REPLACE_WITH_RELEASE_SHA256')
 
 # electron's package.json has no postinstall: install.js is exposed as a
 # "bin" script (`install-electron`) meant to be invoked explicitly, so

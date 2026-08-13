@@ -42,6 +42,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-08-13">
+      <description>
+        <p>Adds a Replay page, Radio browsing, and Carts by genre.</p>
+        <ul>
+          <li>Fix the back button after clicking into an artist</li>
+          <li>Fix an error opening the mk-007 radio station</li>
+          <li>Performance improvements and artwork caching</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-08-12">
       <description><p>Redraw the icon as a tapered fermata over a round dot,
       closer to the shape engraved notation uses.</p></description>
