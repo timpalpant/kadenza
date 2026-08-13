@@ -37,12 +37,27 @@ Item {
         return Math.max(64, Math.min(512, Math.ceil(drawn / 64) * 64));
     }
 
+    // decodeSize follows width, and width is zero until the tile has been laid
+    // out, which floors it at 64. Loading against it directly meant every
+    // picture was fetched, decoded and uploaded once at 64px and then a second
+    // time at its real size — the texture log for one library page showed 224
+    // uploads at 64² against 92 at 128². Waiting a turn for the size to settle
+    // costs one frame of placeholder and halves the work per tile.
+    property int settledSize: 0
+    onDecodeSizeChanged: settle.restart()
+    Timer {
+        id: settle
+        interval: 0
+        onTriggered: root.settledSize = root.decodeSize
+    }
+
     implicitWidth: Kirigami.Units.iconSizes.huge
     implicitHeight: implicitWidth
 
     Loader {
         id: artwork
         anchors.fill: parent
+        active: root.settledSize > 0
         sourceComponent: root.masked ? maskedArtwork : plainArtwork
     }
 
@@ -54,8 +69,8 @@ Item {
             // The placeholder in front covers this until the picture arrives.
             color: "transparent"
             asynchronous: true
-            sourceSize.width: root.decodeSize
-            sourceSize.height: root.decodeSize
+            sourceSize.width: root.settledSize
+            sourceSize.height: root.settledSize
             // Left at the default stretch: artwork is always requested square
             // (MediaItem::artwork), and PreserveAspectCrop would paint outside
             // the bounds the mask is built from.
@@ -69,8 +84,8 @@ Item {
             asynchronous: true
             cache: true
             fillMode: Image.PreserveAspectCrop
-            sourceSize.width: root.decodeSize
-            sourceSize.height: root.decodeSize
+            sourceSize.width: root.settledSize
+            sourceSize.height: root.settledSize
         }
     }
 

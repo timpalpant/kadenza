@@ -49,6 +49,10 @@ public:
     void setFavorite(const QString &id, bool favorite);
     void setInLibrary(const QString &id, bool inLibrary);
     void setRating(const QString &id, int rating);
+    /// Writes a whole ratings reply in one transaction. Apple returns up to a
+    /// hundred ratings at a time, and a commit per row means a commit — and an
+    /// fsync — per row.
+    void setRatings(const QList<QPair<QString, int>> &ratings);
 
     void clear();
 

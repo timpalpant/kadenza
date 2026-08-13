@@ -1,5 +1,7 @@
 #include "appcontroller.h"
+#include "apipaths.h"
 #include "database.h"
+#include "librarysyncworker.h"
 
 #include <KConfigGroup>
 #include <KSharedConfig>
@@ -116,7 +118,6 @@ AppController::AppController(QObject *parent)
         if (developer.isEmpty() && user.isEmpty()) {
             m_cache.clear();
             m_syncs.clear();
-            m_syncedThisLaunch.clear();
             for (auto *model : allModels())
                 model->clear();
             Q_EMIT syncingChanged();
@@ -157,6 +158,11 @@ AppController::AppController(QObject *parent)
     });
     connect(&m_api, &ApiClient::succeeded, this, &AppController::handleSuccess);
     connect(&m_api, &ApiClient::failed, this, &AppController::handleFailure);
+    connect(&m_api, &ApiClient::succeededRaw, this, [this](const QString &tag, const QByteArray &body) {
+        // Raw replies are only ever library pages.
+        if (tag.startsWith(kSyncTagPrefix))
+            handleSyncPayload(tag.mid(kSyncTagPrefix.size()), body);
+    });
     if (m_demo) {
         loadDemoData();
         m_player.setDemoState();
@@ -165,6 +171,34 @@ AppController::AppController(QObject *parent)
         Database::instance().open();
         m_player.start();
     }
+
+    // The library walk decodes and stores its pages here, so a sync never
+    // competes with painting for the GUI thread.
+    m_syncWorker = new LibrarySyncWorker;
+    m_syncWorker->moveToThread(&m_syncThread);
+    connect(&m_syncThread, &QThread::finished, m_syncWorker, &QObject::deleteLater);
+    connect(this, &AppController::ingestPageRequested, m_syncWorker, &LibrarySyncWorker::ingestPage);
+    connect(this, &AppController::finishSyncRequested, m_syncWorker, &LibrarySyncWorker::finishSync);
+    connect(m_syncWorker, &LibrarySyncWorker::pageIngested, this, &AppController::handleSyncPageIngested);
+    connect(m_syncWorker, &LibrarySyncWorker::syncFinished, this, &AppController::handleSyncFinished);
+    connect(m_syncWorker, &LibrarySyncWorker::pageFailed, this, [this](const QString &kind, qint64 epoch, const QString &message) {
+        if (const auto sync = m_syncs.constFind(kind); sync == m_syncs.constEnd() || sync->epoch != epoch)
+            return;
+        qWarning() << "kadenza: library page rejected" << kind << message;
+        abandonSync(kind);
+    });
+    m_syncThread.start();
+}
+
+AppController::~AppController()
+{
+    if (!m_syncThread.isRunning())
+        return;
+    // Close the worker's SQLite handle on the worker's own thread; a
+    // QSqlDatabase outliving its thread warns at shutdown.
+    QMetaObject::invokeMethod(m_syncWorker, &LibrarySyncWorker::releaseDatabase, Qt::BlockingQueuedConnection);
+    m_syncThread.quit();
+    m_syncThread.wait();
 }
 
 AppController *AppController::create(QQmlEngine *, QJSEngine *)
@@ -546,7 +580,11 @@ void AppController::loadLibrary(const QString &kind, bool refresh)
     if (refresh || model->rowCount() == 0)
         fillFromCache(kind);
 
-    if (refresh || !m_syncedThisLaunch.contains(cacheKind) || m_cache.count(cacheKind) == 0 || m_cache.isStale(cacheKind, kCacheMaxAgeSeconds))
+    // The mirror is trusted across launches. Re-walking it on the first visit
+    // of every launch meant 42 pages of albums before the page settled, which
+    // is precisely what kCacheMaxAgeSeconds exists to avoid. The Refresh
+    // action still forces a walk.
+    if (refresh || m_cache.count(cacheKind) == 0 || m_cache.isStale(cacheKind, kCacheMaxAgeSeconds))
         startLibrarySync(cacheKind);
 }
 
@@ -574,7 +612,6 @@ void AppController::startLibrarySync(const QString &cacheKind)
     sync.position = 0;
     sync.bootstrapping = m_cache.count(cacheKind) == 0;
     m_syncs.insert(cacheKind, sync);
-    m_syncedThisLaunch.insert(cacheKind);
 
     // Only show a spinner when there is nothing cached to look at meanwhile.
     if (sync.bootstrapping) {
@@ -583,43 +620,63 @@ void AppController::startLibrarySync(const QString &cacheKind)
     }
     Q_EMIT syncingChanged();
 
-    m_api.get(kSyncTagPrefix + cacheKind, libraryPathFor(cacheKind));
+    m_api.getRaw(kSyncTagPrefix + cacheKind, libraryPathFor(cacheKind));
 }
 
-void AppController::handleSyncPage(const QString &cacheKind, const QJsonDocument &document)
+void AppController::handleSyncPayload(const QString &cacheKind, const QByteArray &payload)
+{
+    auto sync = m_syncs.constFind(cacheKind);
+    if (sync == m_syncs.constEnd())
+        return;
+    // Decoding and writing happen on the worker; the reply comes back as
+    // handleSyncPageIngested().
+    Q_EMIT ingestPageRequested(cacheKind, sync->epoch, sync->position, payload);
+}
+
+void AppController::handleSyncPageIngested(const QString &cacheKind, qint64 epoch, int itemCount, const QString &next)
 {
     auto sync = m_syncs.find(cacheKind);
-    if (sync == m_syncs.end())
+    // A sync abandoned or restarted while this page was with the worker must
+    // not resume paging, nor finish an epoch that is no longer the current one.
+    if (sync == m_syncs.end() || sync->epoch != epoch)
         return;
 
-    const auto root = document.object();
-    const auto data = root.value(QStringLiteral("data")).toArray();
-    QList<MediaItem> items;
-    items.reserve(data.size());
-    for (const auto &value : data)
-        items.push_back(MediaItem::fromJson(value.toObject()));
-    m_cache.upsert(cacheKind, items, sync->epoch, sync->position);
-    sync->position += items.size();
+    sync->position += itemCount;
 
-    const QString next = root.value(QStringLiteral("next")).toString();
     const bool enough = cacheKind == kRecentlyAdded && sync->position >= kRecentlyAddedLimit;
     if (!next.isEmpty() && !enough) {
         // On a first-ever sync there is nothing else to show, so let each page
         // land in the view as it arrives instead of leaving the page empty.
         if (sync->bootstrapping)
             refreshCachedModels(cacheKind);
-        m_api.get(kSyncTagPrefix + cacheKind, next);
+        m_api.getRaw(kSyncTagPrefix + cacheKind, ApiPaths::withLibraryIncludes(next));
         return;
     }
 
-    const qint64 epoch = sync->epoch;
+    Q_EMIT finishSyncRequested(cacheKind, epoch);
+}
+
+void AppController::handleSyncFinished(const QString &cacheKind, qint64 epoch)
+{
+    auto sync = m_syncs.find(cacheKind);
+    if (sync == m_syncs.end() || sync->epoch != epoch)
+        return;
     m_syncs.erase(sync);
-    m_cache.finishSync(cacheKind, epoch);
     refreshCachedModels(cacheKind);
     // Library rows carry their ratings in the cache; refresh them once per sync
     // rather than on every page of the walk.
     if (auto *model = modelForKind(cacheKind))
         requestRatingsFor(model);
+    Q_EMIT syncingChanged();
+}
+
+void AppController::abandonSync(const QString &cacheKind)
+{
+    // Dropped without calling finishSync(), so the previous epoch's rows
+    // survive and a partial sync cannot look like a shrunken library.
+    m_syncs.remove(cacheKind);
+    if (auto *model = modelForKind(cacheKind))
+        model->setLoading(false);
     Q_EMIT syncingChanged();
 }
 
@@ -759,6 +816,7 @@ void AppController::requestRatingsFor(MediaModel *model)
         return;
     // Ratings are queried per resource type, so group the model's rows first.
     QHash<QString, QStringList> byType;
+    QHash<QString, QSet<QString>> seen;
     for (int row = 0; row < model->rowCount(); ++row) {
         const auto *item = model->itemAt(row);
         if (!item || !ratableType(item->type))
@@ -770,8 +828,12 @@ void AppController::requestRatingsFor(MediaModel *model)
         if (id.isEmpty() || id.startsWith(QLatin1Char('i')))
             continue;
         auto &ids = byType[resource];
-        if (!ids.contains(id))
+        // Deduplicated through a set: a linear contains() over the ids already
+        // collected made this quadratic in the size of the model.
+        if (!seen[resource].contains(id)) {
+            seen[resource].insert(id);
             ids.push_back(id);
+        }
     }
     for (auto it = byType.cbegin(); it != byType.cend(); ++it) {
         const QStringList &ids = it.value();
@@ -785,28 +847,53 @@ void AppController::requestRatingsFor(MediaModel *model)
 
 void AppController::applyRating(const QString &id, int rating)
 {
-    if (!id.isEmpty() && id == m_detailRatingId && m_detailRating != rating) {
-        m_detailRating = rating;
-        Q_EMIT detailRatingChanged();
+    if (id.isEmpty())
+        return;
+    applyRatings({{id, rating}});
+}
+
+void AppController::applyRatings(const QHash<QString, int> &byId)
+{
+    if (byId.isEmpty())
+        return;
+
+    if (!m_detailRatingId.isEmpty()) {
+        const auto found = byId.constFind(m_detailRatingId);
+        if (found != byId.constEnd() && m_detailRating != found.value()) {
+            m_detailRating = found.value();
+            Q_EMIT detailRatingChanged();
+        }
     }
+
+    // One pass per model rather than one pass per rating: a reply carries up
+    // to a hundred ids and the app keeps a couple of dozen models alive.
     auto models = allModels();
     models.append(m_player.queueModel());
     for (auto *model : models)
-        model->setRating(id, rating);
+        model->setRatings(byId);
     for (auto *model : m_recommendationModels)
-        model->setRating(id, rating);
-    m_cache.setRating(id, rating);
+        model->setRatings(byId);
+
+    // And one transaction rather than one per rating; every commit is an
+    // fsync, which is what made a ratings reply stall the frame.
+    QList<QPair<QString, int>> rows;
+    rows.reserve(byId.size());
+    for (auto it = byId.cbegin(); it != byId.cend(); ++it)
+        rows.push_back({it.key(), it.value()});
+    m_cache.setRatings(rows);
 }
 
 void AppController::handleRatings(const QString &, const QJsonDocument &document)
 {
+    QHash<QString, int> byId;
     for (const auto &value : document.object().value(QStringLiteral("data")).toArray()) {
         const auto rating = value.toObject();
         const QString id = rating.value(QStringLiteral("id")).toString();
-        const int score = rating.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("value")).toInt();
-        if (!id.isEmpty())
-            applyRating(id, score);
+        if (id.isEmpty())
+            continue;
+        byId.insert(id, rating.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("value")).toInt());
     }
+    applyRatings(byId);
 }
 
 void AppController::loadStations(bool refresh)
@@ -1097,10 +1184,6 @@ void AppController::loadDemoData()
 
 void AppController::handleSuccess(const QString &tag, const QJsonDocument &document)
 {
-    if (tag.startsWith(kSyncTagPrefix)) {
-        handleSyncPage(tag.mid(kSyncTagPrefix.size()), document);
-        return;
-    }
     if (tag == QStringLiteral("artist-detail")) {
         m_pendingModels.remove(tag);
         if (m_loadingCount > 0)
@@ -1253,14 +1336,9 @@ void AppController::handleFailure(const QString &tag, int status, const QString 
     }
     if (tag.startsWith(kSyncTagPrefix)) {
         const QString cacheKind = tag.mid(kSyncTagPrefix.size());
-        // Abandon the walk without calling finishSync(), so the previous epoch's
-        // rows survive and a partial sync cannot look like a shrunken library.
-        m_syncs.remove(cacheKind);
-        if (auto *model = modelForKind(cacheKind))
-            model->setLoading(false);
+        abandonSync(cacheKind);
         if (m_cache.count(cacheKind) == 0)
             setError(tr("Could not load your library (%1): %2").arg(status).arg(message));
-        Q_EMIT syncingChanged();
         return;
     }
     if (tag == QStringLiteral("create-playlist") || tag == QStringLiteral("add-playlist-track")) {

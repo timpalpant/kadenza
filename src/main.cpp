@@ -1,4 +1,5 @@
 #include "appcontroller.h"
+#include "artworkcache.h"
 #include "mprisplayer.h"
 #include "version.h"
 
@@ -63,7 +64,12 @@ int main(int argc, char *argv[])
     AppController::setInstance(controller);
     MprisPlayer mpris(controller->player(), &app);
 
+    // Declared before the engine so it outlives it: the engine keeps a bare
+    // pointer to the factory and uses it whenever it builds a NAM.
+    ArtworkCachingFactory networkFactory;
+
     QQmlApplicationEngine engine;
+    engine.setNetworkAccessManagerFactory(&networkFactory);
     KLocalization::setupLocalizedContext(&engine);
     engine.rootContext()->setContextProperty(QStringLiteral("AboutData"), QVariant::fromValue(aboutData));
     engine.loadFromModule("io.github.timpalpant.kadenza", "Main");

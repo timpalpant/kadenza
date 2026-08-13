@@ -60,6 +60,8 @@ public:
     void setFavorite(const QString &id, bool favorite);
     void setInLibrary(const QString &id, bool inLibrary);
     void setRating(const QString &id, int rating);
+    /// Applies a whole ratings reply in a single pass over the rows.
+    void setRatings(const QHash<QString, int> &byId);
 
     Q_INVOKABLE QVariantMap get(int row) const;
     Q_INVOKABLE QStringList playbackIds() const;

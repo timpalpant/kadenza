@@ -55,32 +55,39 @@ Kirigami.Page {
     // width, so it landed on top of the last control in every row. ScrollView
     // insets the content instead, which is also what Kirigami.ScrollablePage
     // does for the pages that were never affected.
-    QQC2.ScrollView {
+    // Only the representation in use is built. Hiding the other one still left
+    // it laying out and instantiating a viewport's worth of delegates —
+    // measured at 29 rows for a list nobody was looking at.
+    Loader {
         anchors.fill: parent
-        visible: !page.gridMode
-        QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
+        active: !page.gridMode
+        sourceComponent: QQC2.ScrollView {
+            QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
 
-        ListView {
-            model: page.mediaModel
-            clip: true
-            reuseItems: true
-            delegate: MediaDelegate {
-                onPlayRequested: App.playModel(page.mediaModel, index)
-                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+            ListView {
+                model: page.mediaModel
+                clip: true
+                reuseItems: true
+                delegate: MediaDelegate {
+                    onPlayRequested: App.playModel(page.mediaModel, index)
+                    onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+                }
+                onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
             }
-            onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
         }
     }
 
-    QQC2.ScrollView {
+    Loader {
         anchors.fill: parent
-        visible: page.gridMode
-        QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
+        active: page.gridMode
+        sourceComponent: QQC2.ScrollView {
+            QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
 
-        MediaGrid {
-            model: page.mediaModel
-            sizeScale: page.kind === "artists" ? 0.75 : 1
-            onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
+            MediaGrid {
+                model: page.mediaModel
+                sizeScale: page.kind === "artists" ? 0.75 : 1
+                onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
+            }
         }
     }
 

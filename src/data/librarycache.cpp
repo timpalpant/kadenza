@@ -239,15 +239,31 @@ void LibraryCache::setInLibrary(const QString &id, bool inLibrary)
 
 void LibraryCache::setRating(const QString &id, int rating)
 {
-    if (!available() || id.isEmpty())
+    setRatings({{id, rating}});
+}
+
+void LibraryCache::setRatings(const QList<QPair<QString, int>> &ratings)
+{
+    if (!available() || ratings.isEmpty())
         return;
-    QSqlQuery query(Database::instance().db());
+
+    QSqlDatabase database = Database::instance().db();
+    database.transaction();
+
+    QSqlQuery query(database);
     query.prepare(QStringLiteral("UPDATE library_items SET rating = ? "
                                  "WHERE id = ? OR catalog_id = ?"));
-    query.addBindValue(rating);
-    query.addBindValue(id);
-    query.addBindValue(id);
-    query.exec();
+    for (const auto &[id, rating] : ratings) {
+        if (id.isEmpty())
+            continue;
+        query.addBindValue(rating);
+        query.addBindValue(id);
+        query.addBindValue(id);
+        if (!query.exec())
+            qWarning() << "kadenza: cache rating update failed" << query.lastError().text();
+    }
+
+    database.commit();
 }
 
 void LibraryCache::clear()

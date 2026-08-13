@@ -18,8 +18,19 @@ public:
     bool open(const QString &path = {});
     void close();
 
+    /// This thread's handle on the cache, opened on first use.
+    ///
+    /// SQLite handles cannot be shared between threads, so each thread that
+    /// touches the cache gets its own connection to the same file. WAL is what
+    /// makes that worth doing: the sync worker can write while the GUI thread
+    /// reads the rows it is displaying.
     [[nodiscard]] QSqlDatabase db() const;
     [[nodiscard]] bool isOpen() const;
+
+    /// Closes and forgets the calling thread's handle. A worker thread must
+    /// call this before it exits; a QSqlDatabase that outlives its thread is a
+    /// leak Qt complains about at shutdown.
+    static void releaseThreadConnection();
 
     /// Drops every cached resource and its sync bookkeeping, used on sign-out.
     void wipe();
@@ -31,8 +42,9 @@ private:
     bool createSchema();
     int schemaVersion();
     void setSchemaVersion(int version);
+    [[nodiscard]] static QString connectionName();
 
-    QString m_connectionName = QStringLiteral("kadenza");
+    QString m_path;
     QString m_lastError;
     bool m_open = false;
 };

@@ -31,8 +31,11 @@ qt_add_executable(kadenza
     src/main.cpp
     src/appcontroller.cpp src/appcontroller.h
     src/api/apiclient.cpp src/api/apiclient.h
+    src/api/apipaths.cpp src/api/apipaths.h
+    src/api/artworkcache.cpp src/api/artworkcache.h
     src/data/database.cpp src/data/database.h
     src/data/librarycache.cpp src/data/librarycache.h
+    src/data/librarysyncworker.cpp src/data/librarysyncworker.h
     src/media/mediaitem.cpp src/media/mediaitem.h
     src/media/mediamodel.cpp src/media/mediamodel.h
     src/player/playercontroller.cpp src/player/playercontroller.h

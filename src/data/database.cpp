@@ -5,6 +5,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
+#include <QThread>
 
 namespace {
 
@@ -53,7 +54,26 @@ const char *const CreateStatements[] = {
     "date_added DESC)",
     "CREATE INDEX IF NOT EXISTS idx_library_catalog ON "
     "library_items(catalog_id)",
+    // `id` is the second column of the primary key, which cannot serve a
+    // lookup that does not also name `kind`. The rating, favourite and
+    // in-library updates all match on `id OR catalog_id`, and without this
+    // every one of them scanned the whole table.
+    "CREATE INDEX IF NOT EXISTS idx_library_id ON library_items(id)",
 };
+
+/// Connection settings every handle needs, whichever thread opened it.
+void applyPragmas(QSqlDatabase &database)
+{
+    QSqlQuery pragma(database);
+    // WAL keeps reads responsive while a sync writes, and NORMAL is the right
+    // durability trade-off for a cache that can always be rebuilt from Apple.
+    pragma.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
+    pragma.exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
+    // WAL allows one writer at a time. The GUI thread still writes the odd
+    // rating or favourite while the worker walks the library, so let a
+    // collision wait rather than fail.
+    pragma.exec(QStringLiteral("PRAGMA busy_timeout=5000"));
+}
 
 } // namespace
 
@@ -63,9 +83,48 @@ Database &Database::instance()
     return self;
 }
 
+QString Database::connectionName()
+{
+    // One connection per thread, named after it. Qt refuses to hand a handle
+    // opened on one thread to another, so the name has to distinguish them.
+    return QStringLiteral("kadenza-%1").arg(reinterpret_cast<quintptr>(QThread::currentThread()), 0, 16);
+}
+
 QSqlDatabase Database::db() const
 {
-    return QSqlDatabase::database(m_connectionName);
+    const QString name = connectionName();
+    if (QSqlDatabase::contains(name))
+        return QSqlDatabase::database(name);
+
+    // A thread that has not touched the cache yet opens its own handle. Only
+    // possible once the main thread has been through open() and established
+    // where the file lives and what schema it holds.
+    if (!m_open || m_path.isEmpty())
+        return {};
+
+    QSqlDatabase database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), name);
+    database.setDatabaseName(m_path);
+    if (!database.open()) {
+        qWarning() << "kadenza: cannot open cache on this thread" << m_path << database.lastError().text();
+        QSqlDatabase::removeDatabase(name);
+        return {};
+    }
+    applyPragmas(database);
+    return database;
+}
+
+void Database::releaseThreadConnection()
+{
+    const QString name = connectionName();
+    if (!QSqlDatabase::contains(name))
+        return;
+    // The handle has to be out of scope before the connection is removed, or
+    // Qt warns that it is still in use.
+    {
+        QSqlDatabase database = QSqlDatabase::database(name);
+        database.close();
+    }
+    QSqlDatabase::removeDatabase(name);
 }
 
 bool Database::isOpen() const
@@ -82,8 +141,9 @@ bool Database::open(const QString &path)
         file = dir + QStringLiteral("/kadenza.sqlite");
     }
 
-    QSqlDatabase database = QSqlDatabase::contains(m_connectionName) ? QSqlDatabase::database(m_connectionName)
-                                                                     : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
+    const QString name = connectionName();
+    QSqlDatabase database = QSqlDatabase::contains(name) ? QSqlDatabase::database(name)
+                                                         : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), name);
     database.setDatabaseName(file);
 
     if (!database.open()) {
@@ -92,12 +152,9 @@ bool Database::open(const QString &path)
         return false;
     }
 
-    QSqlQuery pragma(database);
-    // WAL keeps reads responsive while a sync writes, and NORMAL is the right
-    // durability trade-off for a cache that can always be rebuilt from Apple.
-    pragma.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
-    pragma.exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
+    applyPragmas(database);
 
+    m_path = file;
     m_open = true;
     return createSchema();
 }
@@ -105,7 +162,7 @@ bool Database::open(const QString &path)
 void Database::close()
 {
     if (m_open) {
-        QSqlDatabase::database(m_connectionName).close();
+        releaseThreadConnection();
         m_open = false;
     }
 }

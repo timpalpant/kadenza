@@ -121,39 +121,44 @@ QQC2.ItemDelegate {
                 }
             }
 
-            Rectangle {
+            // The badge and the play button are built on demand. Most tiles are
+            // unrated and never hovered, and a RoundButton is a full control
+            // with a background of its own — building both for every tile cost
+            // a third of the delegate's construction time for something the
+            // user usually never sees.
+            Loader {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.margins: Kirigami.Units.smallSpacing
-                visible: root.rating !== 0
-                width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing
-                height: width
-                radius: width / 2
-                color: Qt.rgba(0, 0, 0, 0.55)
-                Kirigami.Icon {
-                    anchors.centerIn: parent
-                    width: Kirigami.Units.iconSizes.small
+                active: root.rating !== 0
+                sourceComponent: Rectangle {
+                    width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing
                     height: width
-                    source: root.rating > 0 ? "love" : "dialog-cancel"
-                    color: "white"
+                    radius: width / 2
+                    color: Qt.rgba(0, 0, 0, 0.55)
+                    Kirigami.Icon {
+                        anchors.centerIn: parent
+                        width: Kirigami.Units.iconSizes.small
+                        height: width
+                        source: root.rating > 0 ? "love" : "dialog-cancel"
+                        color: "white"
+                    }
                 }
             }
-            QQC2.RoundButton {
+            Loader {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: Kirigami.Units.smallSpacing
-                text: i18n("Play")
-                icon.name: "media-playback-start"
-                display: QQC2.AbstractButton.IconOnly
-                highlighted: true
-                visible: root.playableCollection && opacity > 0
-                opacity: root.hovered ? 1 : 0
-                Behavior on opacity {
-                    NumberAnimation { duration: Kirigami.Units.shortDuration }
+                active: root.playableCollection && root.hovered
+                sourceComponent: QQC2.RoundButton {
+                    text: i18n("Play")
+                    icon.name: "media-playback-start"
+                    display: QQC2.AbstractButton.IconOnly
+                    highlighted: true
+                    onClicked: root.playRequested()
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.text: i18n("Play %1", root.title)
                 }
-                onClicked: root.playRequested()
-                QQC2.ToolTip.visible: hovered
-                QQC2.ToolTip.text: i18n("Play %1", root.title)
             }
         }
         QQC2.Label {

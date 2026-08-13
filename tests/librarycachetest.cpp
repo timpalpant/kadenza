@@ -47,6 +47,7 @@ private slots:
     void interruptedSyncKeepsPreviousContents();
     void updatesFavoriteByCatalogId();
     void storesAndUpdatesRatings();
+    void appliesABatchOfRatingsInOneTransaction();
     void reportsStalenessBeforeFirstSync();
     void cleanupTestCase();
 
@@ -188,6 +189,27 @@ void LibraryCacheTest::storesAndUpdatesRatings()
     m_cache.setRating(QStringLiteral("cat-1"), -1);
     items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
     QCOMPARE(items.at(0).rating, -1);
+}
+
+void LibraryCacheTest::appliesABatchOfRatingsInOneTransaction()
+{
+    const qint64 epoch = m_cache.beginSync(kAlbums);
+    m_cache.upsert(kAlbums,
+                   {makeItem("1", "One", "2026-01-01T00:00:00Z", "cat-1"),
+                    makeItem("2", "Two", "2026-01-02T00:00:00Z"),
+                    makeItem("3", "Three", "2026-01-03T00:00:00Z")},
+                   epoch,
+                   0);
+    m_cache.finishSync(kAlbums, epoch);
+
+    // Mixed keys: the first row is addressed by its catalog id, the second by
+    // its library id, and the third is left alone.
+    m_cache.setRatings({{QStringLiteral("cat-1"), 1}, {QStringLiteral("2"), -1}});
+
+    const auto items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
+    QCOMPARE(items.at(0).rating, 1);
+    QCOMPARE(items.at(1).rating, -1);
+    QCOMPARE(items.at(2).rating, 0);
 }
 
 void LibraryCacheTest::reportsStalenessBeforeFirstSync()

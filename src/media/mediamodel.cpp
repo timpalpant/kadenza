@@ -204,13 +204,23 @@ void MediaModel::setInLibrary(const QString &id, bool inLibrary)
 
 void MediaModel::setRating(const QString &id, int rating)
 {
+    setRatings({{id, rating}});
+}
+
+void MediaModel::setRatings(const QHash<QString, int> &byId)
+{
+    if (byId.isEmpty())
+        return;
+    // One pass over the rows for the whole reply. Applying a hundred ratings
+    // one at a time meant a hundred passes over every model in the app.
     for (int row = 0; row < m_items.size(); ++row) {
         auto &item = m_items[row];
-        if (item.id != id && item.catalogId != id)
+        auto found = item.id.isEmpty() ? byId.constEnd() : byId.constFind(item.id);
+        if (found == byId.constEnd() && !item.catalogId.isEmpty())
+            found = byId.constFind(item.catalogId);
+        if (found == byId.constEnd() || item.rating == found.value())
             continue;
-        if (item.rating == rating)
-            continue;
-        item.rating = rating;
+        item.rating = found.value();
         const auto modelIndex = index(row, 0);
         Q_EMIT dataChanged(modelIndex, modelIndex, {RatingRole});
     }

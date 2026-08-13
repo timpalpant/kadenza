@@ -7,11 +7,13 @@
 
 #include <QObject>
 #include <QSet>
+#include <QThread>
 #include <QVariantList>
 #include <qqmlintegration.h>
 
 class QQmlEngine;
 class QJSEngine;
+class LibrarySyncWorker;
 
 class AppController : public QObject
 {
@@ -71,6 +73,7 @@ public:
     // while MPRIS reported on the other. Without a default constructor the engine
     // has to go through create(), which hands back the one main() built.
     explicit AppController(QObject *parent);
+    ~AppController() override;
     static AppController *create(QQmlEngine *, QJSEngine *);
     static void setInstance(AppController *instance);
 
@@ -179,6 +182,11 @@ signals:
     void searchLibraryChanged();
     void lastPageChanged();
 
+    /// Handed to LibrarySyncWorker across the thread boundary. Not part of the
+    /// QML-facing surface; emitted only by the library sync.
+    void ingestPageRequested(const QString &kind, qint64 epoch, int firstPosition, const QByteArray &payload);
+    void finishSyncRequested(const QString &kind, qint64 epoch);
+
 private:
     MediaModel *modelForKind(const QString &kind);
     QString collectionPath(const QString &id, const QString &catalogId, const QString &type);
@@ -189,7 +197,13 @@ private:
     static QString libraryPathFor(const QString &cacheKind);
     void fillFromCache(const QString &uiKind);
     void startLibrarySync(const QString &cacheKind);
-    void handleSyncPage(const QString &cacheKind, const QJsonDocument &document);
+    /// Hands a freshly arrived page to the worker thread.
+    void handleSyncPayload(const QString &cacheKind, const QByteArray &payload);
+    /// Decides whether to ask Apple for another page, once the worker has
+    /// written the last one.
+    void handleSyncPageIngested(const QString &cacheKind, qint64 epoch, int itemCount, const QString &next);
+    void handleSyncFinished(const QString &cacheKind, qint64 epoch);
+    void abandonSync(const QString &cacheKind);
     void handleArtistDetail(const QJsonDocument &document);
     void handleRecommendations(const QJsonDocument &document);
     void handleRatings(const QString &tag, const QJsonDocument &document);
@@ -198,6 +212,8 @@ private:
     /// Fetches the user's love/dislike state for the songs in a model.
     void requestRatingsFor(MediaModel *model);
     void applyRating(const QString &id, int rating);
+    /// Applies a whole ratings reply: one pass per model, one transaction.
+    void applyRatings(const QHash<QString, int> &byId);
     void refreshCachedModels(const QString &cacheKind);
     void requestModel(const QString &tag, const QString &path, MediaModel *model, bool append = false);
     void handleSuccess(const QString &tag, const QJsonDocument &document);
@@ -251,9 +267,9 @@ private:
         bool bootstrapping = false;
     };
     QHash<QString, LibrarySync> m_syncs;
-    // Collections already refreshed since start-up, so each launch resyncs once
-    // even when the cached copy is still inside its freshness window.
-    QSet<QString> m_syncedThisLaunch;
+    // Page decoding and cache writes happen here, not on the GUI thread.
+    QThread m_syncThread;
+    LibrarySyncWorker *m_syncWorker = nullptr;
     QString m_detailTitle;
     QString m_detailSubtitle;
     QString m_detailArtwork;

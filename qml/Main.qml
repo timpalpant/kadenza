@@ -313,7 +313,14 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    pageStack.initialPage: componentFor(initialPageKey)
+    // The first page is pushed rather than bound to pageStack.initialPage.
+    // PageRow reacts to initialPage changing by running clear() + push(), and
+    // initialPageKey follows App.lastPage — which navigate() writes on every
+    // visit. Bound, each navigation therefore built its page, threw it away
+    // and built it again; on a library grid that was twice the work of the
+    // most expensive page in the app.
+    Component.onCompleted: root.resetNavigation(root.initialPageKey)
+
     pageStack.columnView.columnResizeMode: Kirigami.ColumnView.SingleColumn
 
     pageStack.anchors.bottomMargin: playerBar.visible ? playerBar.height : 0
