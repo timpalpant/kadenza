@@ -20,9 +20,14 @@
 
        Centring is by bounding box, not by eye: the crescent runs y=33 to y=90,
        whose midpoint is 61.5, so the whole mark is nudged down 2.5 to sit on
-       the plate's centre of 64. The dot sits at the middle of the cavity the
-       crescent encloses. Move the arc and the dot together, or re-run both
-       sums — changing one alone drifts the mark off centre.
+       the plate's centre of 64. Move the arc and the dot together, or re-run
+       that sum — changing one alone drifts the mark off centre.
+
+       The dot is the exception, and is placed by eye rather than by arithmetic.
+       The cavity is an arch, wider at its base than at its crown, so its
+       visual mass sits below its bounding-box centre of 74.5; a dot centred
+       there reads as riding high. Dropping it to 79.5 balances it against the
+       arc above and the open span below.
 
        The warm plate is a nod to Apple Music, whose catalog this plays, and
        stops short of its actual mark: a client should read as compatible with
@@ -38,6 +43,6 @@
   <rect x="8" y="8" width="112" height="112" rx="27" fill="url(#plate)"/>
   <g transform="translate(0,2.5)">
     <path d="M25,90 C25,14 103,14 103,90 L98,90 C98,42 30,42 30,90 Z" fill="#ffffff"/>
-    <circle cx="64" cy="72" r="9.5" fill="#ffffff"/>
+    <circle cx="64" cy="77" r="9.5" fill="#ffffff"/>
   </g>
 </svg>
