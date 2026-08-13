@@ -71,6 +71,10 @@ Kirigami.ApplicationWindow {
         return null;
     }
 
+    /// Set while this file is the one driving pageStack, so the resync below
+    /// only reacts to pops it did not perform itself.
+    property bool navigating: false
+
     function navigate(key) {
         const pageKey = String(key);
         const component = componentFor(pageKey);
@@ -82,6 +86,7 @@ Kirigami.ApplicationWindow {
         // Switching sidebar destinations replaces the stack. Pushing on every
         // visit grew pageStack without bound and made Back retrace the whole
         // click history instead of leaving a detail page.
+        navigating = true;
         if (topLevelPages.indexOf(pageKey) >= 0) {
             pageStack.clear();
             pageStack.push(component);
@@ -90,6 +95,7 @@ Kirigami.ApplicationWindow {
             pageStack.push(component);
             navigationHistory = navigationHistory.concat([pageKey]);
         }
+        navigating = false;
         currentPage = pageKey;
         App.lastPage = pageKey;
         if (compactMode) globalDrawer.close();
@@ -97,17 +103,41 @@ Kirigami.ApplicationWindow {
 
     function goBack() {
         if (navigationHistory.length <= 1 || pageStack.depth <= 1) return;
+        navigating = true;
         navigationHistory = navigationHistory.slice(0, -1);
         currentPage = navigationHistory[navigationHistory.length - 1];
         pageStack.pop();
+        navigating = false;
+    }
+
+    // Kirigami's header back button calls PageRow.goBack(), which does not pop
+    // the stack: it steps currentIndex back and leaves the page where it is.
+    // So depth never changes, and without following currentIndex instead,
+    // currentPage still said "detail" after returning to Artists —
+    // navigate("detail") then matched it, returned early, and clicking another
+    // artist did nothing at all.
+    Connections {
+        target: pageStack
+
+        function onCurrentIndexChanged() {
+            if (root.navigating)
+                return;
+            const index = pageStack.currentIndex;
+            if (index < 0 || index >= root.navigationHistory.length - 1)
+                return;
+            root.navigationHistory = root.navigationHistory.slice(0, index + 1);
+            root.currentPage = root.navigationHistory[index];
+        }
     }
 
     function resetNavigation(key) {
+        navigating = true;
         const component = componentFor(key);
         pageStack.clear();
         pageStack.push(component);
         currentPage = key;
         navigationHistory = [key];
+        navigating = false;
     }
 
     function openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork) {
