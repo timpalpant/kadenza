@@ -20,11 +20,18 @@ QQC2.ItemDelegate {
     signal playRequested()
 
     readonly property bool artistTile: root.mediaType.indexOf("artist") >= 0
+    // Curators, activities, record labels and playlist folders are pure
+    // browse nodes: nothing to play, rate, favorite, or add to the library as
+    // a whole, only the playlists/albums/playlists found inside them.
+    readonly property bool browseOnlyTile: root.mediaType.indexOf("curator") >= 0
+                                           || root.mediaType.indexOf("activities") >= 0
+                                           || root.mediaType.indexOf("record-label") >= 0
+                                           || root.mediaType.indexOf("playlist-folder") >= 0
     // Artists resolve to a list of albums rather than something playable, so
     // they get no play affordance.
-    readonly property bool playableCollection: !root.artistTile
+    readonly property bool playableCollection: !root.artistTile && !root.browseOnlyTile
     // Apple rates songs, albums, playlists and stations, but not artists.
-    readonly property bool ratable: !root.artistTile
+    readonly property bool ratable: !root.artistTile && !root.browseOnlyTile
 
     width: GridView.view ? GridView.view.cellWidth : Kirigami.Units.gridUnit * 10
     height: GridView.view ? GridView.view.cellHeight : Kirigami.Units.gridUnit * 13
@@ -89,12 +96,12 @@ QQC2.ItemDelegate {
             }
             QQC2.MenuSeparator { visible: root.ratable }
             QQC2.MenuItem {
-                visible: root.mediaType.indexOf("playlist") < 0
+                visible: root.mediaType.indexOf("playlist") < 0 && !root.browseOnlyTile
                 text: root.favorite ? i18n("Remove from Favorites") : i18n("Add to Favorites")
                 onTriggered: App.setFavorite(root.catalogId || root.mediaId, root.mediaType, !root.favorite)
             }
             QQC2.MenuItem {
-                visible: root.mediaType.indexOf("playlist") < 0
+                visible: root.mediaType.indexOf("playlist") < 0 && !root.browseOnlyTile
                 text: root.inLibrary ? i18n("Remove from Library") : i18n("Add to Library")
                 onTriggered: App.setInLibrary(root.inLibrary ? root.mediaId : (root.catalogId || root.mediaId), root.mediaType, !root.inLibrary)
             }

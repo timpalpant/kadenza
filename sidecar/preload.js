@@ -181,27 +181,6 @@ async function enqueue(method, songs) {
   emit('queue', queuePayload())
 }
 
-async function accepted(operation) {
-  try {
-    return await operation()
-  } catch (error) {
-    const empty = !error || error.body === undefined || error.body === null || error.body === ''
-    if (error instanceof SyntaxError && empty) return null
-    throw error
-  }
-}
-
-async function libraryWrite(kind, id, operation) {
-  try {
-    await accepted(operation)
-    emit('library-write', { kind, id, ok: true, detail: '' })
-  } catch (error) {
-    emit('library-write', {
-      kind, id, ok: false, detail: String((error && error.message) || error),
-    })
-  }
-}
-
 function lyricTime(value) {
   if (!value) return 0
   if (value.endsWith('ms')) return Number.parseFloat(value) || 0
@@ -363,26 +342,6 @@ const commands = {
   playNext: ({ songs }) => enqueue('playNext', songs),
   playLater: ({ songs }) => enqueue('playLater', songs),
   getLyrics: ({ id }) => fetchLyrics(id),
-  favorite: ({ id, type = 'songs' }) => {
-    const resource = type.replace(/^library-/, '')
-    return libraryWrite('favorite', id, () =>
-      music.api.post(`/v1/me/favorites?ids[${resource}]=${encodeURIComponent(id)}`))
-  },
-  unfavorite: ({ id, type = 'songs' }) => {
-    const resource = type.replace(/^library-/, '')
-    return libraryWrite('unfavorite', id, () =>
-      music.api.delete(`/v1/me/favorites?ids[${resource}]=${encodeURIComponent(id)}`))
-  },
-  addToLibrary: ({ id, type = 'songs' }) => {
-    const resource = type.replace(/^library-/, '')
-    return libraryWrite('add-library', id, () =>
-      music.api.post(`/v1/me/library?ids[${resource}]=${encodeURIComponent(id)}`))
-  },
-  removeFromLibrary: ({ id, type = 'songs' }) => {
-    const resource = type.replace(/^library-/, '')
-    return libraryWrite('remove-library', id, () =>
-      music.api.delete(`/v1/me/library/${resource}/${encodeURIComponent(id)}`))
-  },
   seek: ({ positionMs }) => music.seekToTime(positionMs / 1000),
   setVolume: ({ volume }) => { music.volume = volume },
   setShuffle: ({ shuffle }) => {

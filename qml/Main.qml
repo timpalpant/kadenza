@@ -20,8 +20,8 @@ Kirigami.ApplicationWindow {
     // stacks on top of whichever one is showing.
     readonly property var topLevelPages: ["home", "now-playing", "recently-added",
                                           "songs", "albums", "artists", "playlists",
-                                          "search", "charts", "radio", "queue", "settings",
-                                          "about"]
+                                          "search", "charts", "radio", "replay", "queue",
+                                          "settings", "about"]
     property string pendingPlaylistSongId: ""
     readonly property bool compactMode: width < Kirigami.Units.gridUnit * 40
     // Wide enough for the longest destination ("Recently Added") at the default
@@ -41,10 +41,12 @@ Kirigami.ApplicationWindow {
     Component { id: searchPage; SearchPage {} }
     Component { id: chartsPage; ChartsPage {} }
     Component { id: radioPage; RadioPage {} }
+    Component { id: replayPage; ReplayPage {} }
     Component { id: queuePage; QueuePage {} }
     Component { id: settingsPage; SettingsPage {} }
     Component { id: aboutPage; AboutPage {} }
     Component { id: detailPage; DetailPage {} }
+    Component { id: playlistFolderPage; PlaylistFolderPage {} }
 
     function componentFor(key) {
         switch (key) {
@@ -59,10 +61,12 @@ Kirigami.ApplicationWindow {
         case "search": return searchPage;
         case "charts": return chartsPage;
         case "radio": return radioPage;
+        case "replay": return replayPage;
         case "queue": return queuePage;
         case "settings": return settingsPage;
         case "about": return aboutPage;
         case "detail": return detailPage;
+        case "playlist-folder": return playlistFolderPage;
         }
         return null;
     }
@@ -128,6 +132,11 @@ Kirigami.ApplicationWindow {
         } else {
             App.openAlbumNamed(albumName, artistName);
         }
+    }
+
+    function openPlaylistFolder(folderId) {
+        App.loadPlaylistFolder(folderId);
+        navigate("playlist-folder");
     }
 
     Connections {
@@ -250,6 +259,13 @@ Kirigami.ApplicationWindow {
                 checkable: true
                 checked: root.currentPage === "radio"
                 onTriggered: root.navigate("radio")
+            },
+            Kirigami.Action {
+                text: i18n("Replay")
+                icon.name: "view-calendar-year"
+                checkable: true
+                checked: root.currentPage === "replay"
+                onTriggered: root.navigate("replay")
             },
             Kirigami.Action {
                 text: i18n("Queue")

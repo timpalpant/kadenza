@@ -7,6 +7,8 @@ Kirigami.ScrollablePage {
     id: page
     title: i18n("Charts")
 
+    property string selectedGenre: ""
+
     actions: [
         Kirigami.Action {
             visible: !applicationWindow().compactMode
@@ -16,15 +18,45 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: i18n("Refresh")
             icon.name: "view-refresh"
-            onTriggered: App.loadCharts(true)
+            onTriggered: App.loadCharts(true, page.selectedGenre)
         }
     ]
 
-    Component.onCompleted: App.loadCharts()
+    Component.onCompleted: {
+        App.loadCharts();
+        App.loadGenres();
+    }
 
     ColumnLayout {
         width: page.availableWidth
         spacing: Kirigami.Units.largeSpacing
+
+        Flow {
+            visible: App.genres.length > 0
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+            QQC2.Button {
+                text: i18n("All Genres")
+                checkable: true
+                checked: page.selectedGenre.length === 0
+                onClicked: {
+                    page.selectedGenre = "";
+                    App.loadCharts(true, "");
+                }
+            }
+            Repeater {
+                model: App.genres
+                QQC2.Button {
+                    text: modelData.name
+                    checkable: true
+                    checked: page.selectedGenre === modelData.id
+                    onClicked: {
+                        page.selectedGenre = modelData.id;
+                        App.loadCharts(true, modelData.id);
+                    }
+                }
+            }
+        }
 
         Kirigami.Heading {
             text: i18n("Top Songs")

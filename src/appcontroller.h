@@ -37,14 +37,30 @@ class AppController : public QObject
     Q_PROPERTY(MediaModel *searchPlaylistsModel READ searchPlaylistsModel CONSTANT)
     Q_PROPERTY(MediaModel *detailTracksModel READ detailTracksModel CONSTANT)
     Q_PROPERTY(MediaModel *stationsModel READ stationsModel CONSTANT)
+    Q_PROPERTY(MediaModel *liveStationsModel READ liveStationsModel CONSTANT)
+    Q_PROPERTY(MediaModel *personalStationModel READ personalStationModel CONSTANT)
+    Q_PROPERTY(QVariantList stationGenres READ stationGenres NOTIFY stationGenresChanged)
     Q_PROPERTY(MediaModel *chartSongsModel READ chartSongsModel CONSTANT)
     Q_PROPERTY(MediaModel *chartAlbumsModel READ chartAlbumsModel CONSTANT)
     Q_PROPERTY(MediaModel *chartPlaylistsModel READ chartPlaylistsModel CONSTANT)
+    Q_PROPERTY(QVariantList genres READ genres NOTIFY genresChanged)
     Q_PROPERTY(MediaModel *artistTopSongsModel READ artistTopSongsModel CONSTANT)
     Q_PROPERTY(MediaModel *artistAlbumsModel READ artistAlbumsModel CONSTANT)
     Q_PROPERTY(MediaModel *artistSinglesModel READ artistSinglesModel CONSTANT)
     Q_PROPERTY(MediaModel *artistSimilarModel READ artistSimilarModel CONSTANT)
     Q_PROPERTY(MediaModel *artistLatestModel READ artistLatestModel CONSTANT)
+    Q_PROPERTY(MediaModel *replayTopSongsModel READ replayTopSongsModel CONSTANT)
+    Q_PROPERTY(MediaModel *replayTopAlbumsModel READ replayTopAlbumsModel CONSTANT)
+    Q_PROPERTY(MediaModel *replayTopArtistsModel READ replayTopArtistsModel CONSTANT)
+    Q_PROPERTY(MediaModel *playlistFolderModel READ playlistFolderModel CONSTANT)
+    Q_PROPERTY(QString playlistFolderTitle READ playlistFolderTitle NOTIFY playlistFolderChanged)
+    Q_PROPERTY(QString playlistFolderId READ playlistFolderId NOTIFY playlistFolderChanged)
+    Q_PROPERTY(MediaModel *searchCuratorsModel READ searchCuratorsModel CONSTANT)
+    Q_PROPERTY(MediaModel *searchActivitiesModel READ searchActivitiesModel CONSTANT)
+    Q_PROPERTY(QString detailCuratorId READ detailCuratorId NOTIFY detailChanged)
+    Q_PROPERTY(QString detailCuratorName READ detailCuratorName NOTIFY detailChanged)
+    Q_PROPERTY(QString detailRecordLabelId READ detailRecordLabelId NOTIFY detailChanged)
+    Q_PROPERTY(QString detailRecordLabelName READ detailRecordLabelName NOTIFY detailChanged)
     Q_PROPERTY(QString detailTitle READ detailTitle NOTIFY detailChanged)
     Q_PROPERTY(QString detailSubtitle READ detailSubtitle NOTIFY detailChanged)
     Q_PROPERTY(QString detailArtwork READ detailArtwork NOTIFY detailChanged)
@@ -94,14 +110,30 @@ public:
     MediaModel *searchPlaylistsModel();
     MediaModel *detailTracksModel();
     MediaModel *stationsModel();
+    MediaModel *liveStationsModel();
+    MediaModel *personalStationModel();
+    QVariantList stationGenres() const;
     MediaModel *chartSongsModel();
     MediaModel *chartAlbumsModel();
     MediaModel *chartPlaylistsModel();
+    QVariantList genres() const;
     MediaModel *artistTopSongsModel();
     MediaModel *artistAlbumsModel();
     MediaModel *artistSinglesModel();
     MediaModel *artistSimilarModel();
     MediaModel *artistLatestModel();
+    MediaModel *replayTopSongsModel();
+    MediaModel *replayTopAlbumsModel();
+    MediaModel *replayTopArtistsModel();
+    MediaModel *playlistFolderModel();
+    QString playlistFolderTitle() const;
+    QString playlistFolderId() const;
+    MediaModel *searchCuratorsModel();
+    MediaModel *searchActivitiesModel();
+    QString detailCuratorId() const;
+    QString detailCuratorName() const;
+    QString detailRecordLabelId() const;
+    QString detailRecordLabelName() const;
     QString detailTitle() const;
     QString detailSubtitle() const;
     QString detailArtwork() const;
@@ -129,8 +161,17 @@ public:
     void setLastPage(const QString &page);
 
     Q_INVOKABLE void refreshHome();
-    Q_INVOKABLE void loadCharts(bool refresh = false);
+    Q_INVOKABLE void loadCharts(bool refresh = false, const QString &genreId = {});
+    Q_INVOKABLE void loadGenres();
     Q_INVOKABLE void loadStations(bool refresh = false);
+    /// An empty genreId loads Apple's live radio stations; otherwise the live
+    /// stations belonging to that station genre.
+    Q_INVOKABLE void loadLiveStations(const QString &genreId = {});
+    Q_INVOKABLE void loadPersonalStation();
+    Q_INVOKABLE void loadStationGenres();
+    Q_INVOKABLE void loadReplay(bool refresh = false);
+    /// A folder id of "p.playlistsroot" (the default) opens the top level.
+    Q_INVOKABLE void loadPlaylistFolder(const QString &id = QStringLiteral("p.playlistsroot"));
     /// value is 1 to love, -1 to dislike, 0 to clear an existing rating.
     Q_INVOKABLE void setRating(const QString &id, const QString &type, int value);
     /// Rates whatever the detail page is currently showing.
@@ -181,6 +222,9 @@ signals:
     void recommendationsChanged();
     void searchLibraryChanged();
     void lastPageChanged();
+    void stationGenresChanged();
+    void genresChanged();
+    void playlistFolderChanged();
 
     /// Handed to LibrarySyncWorker across the thread boundary. Not part of the
     /// QML-facing surface; emitted only by the library sync.
@@ -205,6 +249,13 @@ private:
     void handleSyncFinished(const QString &cacheKind, qint64 epoch);
     void abandonSync(const QString &cacheKind);
     void handleArtistDetail(const QJsonDocument &document);
+    void handleReplay(const QJsonDocument &document);
+    /// Fills a Replay shelf from its unwrapped period-summary rows. Some rows
+    /// arrive fully hydrated and some as bare id references depending on
+    /// resource type (and possibly account); bare ones are resolved with a
+    /// follow-up batched catalog lookup rather than assumed either way.
+    void fillReplayShelf(const QJsonArray &items, const QString &catalogType, MediaModel *model);
+    void handleFolderContents(const QJsonDocument &document);
     void handleRecommendations(const QJsonDocument &document);
     void handleRatings(const QString &tag, const QJsonDocument &document);
     void handleLookup(const QJsonDocument &document);
@@ -214,6 +265,8 @@ private:
     void applyRating(const QString &id, int rating);
     /// Applies a whole ratings reply: one pass per model, one transaction.
     void applyRatings(const QHash<QString, int> &byId);
+    /// Applies a confirmed favorite or library add/remove to every model and the cache.
+    void applyLibraryWrite(const QString &id, bool enabled, bool isFavorite);
     void refreshCachedModels(const QString &cacheKind);
     void requestModel(const QString &tag, const QString &path, MediaModel *model, bool append = false);
     void handleSuccess(const QString &tag, const QJsonDocument &document);
@@ -245,14 +298,30 @@ private:
     MediaModel m_searchPlaylists;
     MediaModel m_detailTracks;
     MediaModel m_stations;
+    MediaModel m_liveStations;
+    MediaModel m_personalStation;
+    QVariantList m_stationGenres;
     MediaModel m_chartSongs;
     MediaModel m_chartAlbums;
     MediaModel m_chartPlaylists;
+    QVariantList m_genres;
     MediaModel m_artistTopSongs;
     MediaModel m_artistAlbums;
     MediaModel m_artistSingles;
     MediaModel m_artistSimilar;
     MediaModel m_artistLatest;
+    MediaModel m_replayTopSongs;
+    MediaModel m_replayTopAlbums;
+    MediaModel m_replayTopArtists;
+    MediaModel m_playlistFolder;
+    QString m_playlistFolderTitle;
+    QString m_playlistFolderId;
+    MediaModel m_searchCurators;
+    MediaModel m_searchActivities;
+    QString m_detailCuratorId;
+    QString m_detailCuratorName;
+    QString m_detailRecordLabelId;
+    QString m_detailRecordLabelName;
     // Holds the tracks of a collection the user asked to play straight from a
     // grid tile, so starting playback never disturbs the open detail page.
     MediaModel m_pendingPlay;

@@ -407,11 +407,6 @@ void PlayerController::handleEvent(const QJsonObject &object)
         m_synchronizedLyrics = object.value(QStringLiteral("synchronized")).toBool();
         m_lyricsStatus = object.value(QStringLiteral("status")).toString();
         Q_EMIT lyricsChanged();
-    } else if (event == QStringLiteral("library-write")) {
-        Q_EMIT actionResult(object.value(QStringLiteral("kind")).toString(),
-                            object.value(QStringLiteral("id")).toString(),
-                            object.value(QStringLiteral("ok")).toBool(),
-                            object.value(QStringLiteral("detail")).toString());
     } else if (event == QStringLiteral("signed-out")) {
         m_authenticated = false;
         m_queue.clear();
@@ -647,20 +642,6 @@ void PlayerController::requestLyrics()
         return;
     }
     send({{QStringLiteral("cmd"), QStringLiteral("getLyrics")}, {QStringLiteral("id"), m_currentId}});
-}
-void PlayerController::setFavorite(const QString &id, const QString &type, bool favorite)
-{
-    if (!id.isEmpty())
-        send({{QStringLiteral("cmd"), favorite ? QStringLiteral("favorite") : QStringLiteral("unfavorite")},
-              {QStringLiteral("id"), id},
-              {QStringLiteral("type"), type}});
-}
-void PlayerController::setInLibrary(const QString &id, const QString &type, bool inLibrary)
-{
-    if (!id.isEmpty())
-        send({{QStringLiteral("cmd"), inLibrary ? QStringLiteral("addToLibrary") : QStringLiteral("removeFromLibrary")},
-              {QStringLiteral("id"), id},
-              {QStringLiteral("type"), type}});
 }
 void PlayerController::clearError()
 {

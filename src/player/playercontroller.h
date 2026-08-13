@@ -92,8 +92,6 @@ public:
     Q_INVOKABLE void moveQueueItem(int from, int to);
     Q_INVOKABLE void removeQueueItem(int index);
     Q_INVOKABLE void requestLyrics();
-    Q_INVOKABLE void setFavorite(const QString &id, const QString &type, bool favorite);
-    Q_INVOKABLE void setInLibrary(const QString &id, const QString &type, bool inLibrary);
     Q_INVOKABLE void clearError();
     Q_INVOKABLE void restartSidecar();
 
@@ -113,7 +111,6 @@ signals:
     void queuePositionChanged();
     void lyricsChanged();
     void previewDetectedChanged();
-    void actionResult(const QString &kind, const QString &id, bool ok, const QString &detail);
 
 private:
     void send(const QJsonObject &command);

@@ -27,6 +27,11 @@ constexpr int kRecentlyAddedLimit = 100;
 const QLatin1String kRecentlyAdded("recently-added");
 const QLatin1String kSyncTagPrefix("sync-");
 const QLatin1String kRatingsTagPrefix("ratings-");
+const QLatin1String kFavoriteAddTagPrefix("favorite-add-");
+const QLatin1String kFavoriteRemoveTagPrefix("favorite-remove-");
+const QLatin1String kLibraryAddTagPrefix("library-add-");
+const QLatin1String kLibraryRemoveTagPrefix("library-remove-");
+const QLatin1String kReplayResolveTagPrefix("replay-resolve-");
 // Apple caps batch id lookups; keep well inside it.
 constexpr int kRatingsBatchSize = 100;
 } // namespace
@@ -63,10 +68,13 @@ void extractCollection(const QJsonObject &root, const QString &requestedType, QJ
         next = root.value(QStringLiteral("next")).toString();
         return;
     }
-    const auto relationship = resource.value(QStringLiteral("relationships"))
-                                  .toObject()
-                                  .value(requestedType.contains(QStringLiteral("artist")) ? QStringLiteral("albums") : QStringLiteral("tracks"))
-                                  .toObject();
+    const QString relationshipName = requestedType.contains(QStringLiteral("artist")) || requestedType == QStringLiteral("record-labels")
+        ? QStringLiteral("albums")
+        : (requestedType == QStringLiteral("curators") || requestedType == QStringLiteral("apple-curators")
+           || requestedType == QStringLiteral("activities"))
+            ? QStringLiteral("playlists")
+            : QStringLiteral("tracks");
+    const auto relationship = resource.value(QStringLiteral("relationships")).toObject().value(relationshipName).toObject();
     data = relationship.value(QStringLiteral("data")).toArray();
     next = relationship.value(QStringLiteral("next")).toString();
 }
@@ -93,6 +101,8 @@ AppController::AppController(QObject *parent)
     , m_searchPlaylists(this)
     , m_detailTracks(this)
     , m_stations(this)
+    , m_liveStations(this)
+    , m_personalStation(this)
     , m_chartSongs(this)
     , m_chartAlbums(this)
     , m_chartPlaylists(this)
@@ -101,6 +111,12 @@ AppController::AppController(QObject *parent)
     , m_artistSingles(this)
     , m_artistSimilar(this)
     , m_artistLatest(this)
+    , m_replayTopSongs(this)
+    , m_replayTopAlbums(this)
+    , m_replayTopArtists(this)
+    , m_playlistFolder(this)
+    , m_searchCurators(this)
+    , m_searchActivities(this)
     , m_pendingPlay(this)
 {
     m_demo = qEnvironmentVariableIsSet("KADENZA_DEMO");
@@ -134,28 +150,6 @@ AppController::AppController(QObject *parent)
     });
     connect(&m_player, &PlayerController::authenticatedChanged, this, &AppController::authenticatedChanged);
     connect(&m_player, &PlayerController::errorChanged, this, &AppController::errorChanged);
-    connect(&m_player, &PlayerController::actionResult, this, [this](const QString &kind, const QString &id, bool ok, const QString &detail) {
-        if (!ok) {
-            setError(detail.isEmpty() ? tr("Apple Music rejected that change.") : detail);
-            return;
-        }
-        const bool isFavorite = kind == QStringLiteral("favorite") || kind == QStringLiteral("unfavorite");
-        const bool enabled = kind == QStringLiteral("favorite") || kind == QStringLiteral("add-library");
-        auto models = allModels();
-        models.append(m_player.queueModel());
-        for (auto *model : models) {
-            if (isFavorite)
-                model->setFavorite(id, enabled);
-            else
-                model->setInLibrary(id, enabled);
-        }
-        if (isFavorite)
-            m_cache.setFavorite(id, enabled);
-        else
-            m_cache.setInLibrary(id, enabled);
-        setMessage(isFavorite ? (enabled ? tr("Added to Favorites") : tr("Removed from Favorites"))
-                              : (enabled ? tr("Added to Library") : tr("Removed from Library")));
-    });
     connect(&m_api, &ApiClient::succeeded, this, &AppController::handleSuccess);
     connect(&m_api, &ApiClient::failed, this, &AppController::handleFailure);
     connect(&m_api, &ApiClient::succeededRaw, this, [this](const QString &tag, const QByteArray &body) {
@@ -277,6 +271,18 @@ MediaModel *AppController::stationsModel()
 {
     return &m_stations;
 }
+MediaModel *AppController::liveStationsModel()
+{
+    return &m_liveStations;
+}
+MediaModel *AppController::personalStationModel()
+{
+    return &m_personalStation;
+}
+QVariantList AppController::stationGenres() const
+{
+    return m_stationGenres;
+}
 MediaModel *AppController::chartSongsModel()
 {
     return &m_chartSongs;
@@ -288,6 +294,10 @@ MediaModel *AppController::chartAlbumsModel()
 MediaModel *AppController::chartPlaylistsModel()
 {
     return &m_chartPlaylists;
+}
+QVariantList AppController::genres() const
+{
+    return m_genres;
 }
 MediaModel *AppController::artistTopSongsModel()
 {
@@ -308,6 +318,54 @@ MediaModel *AppController::artistSimilarModel()
 MediaModel *AppController::artistLatestModel()
 {
     return &m_artistLatest;
+}
+MediaModel *AppController::replayTopSongsModel()
+{
+    return &m_replayTopSongs;
+}
+MediaModel *AppController::replayTopAlbumsModel()
+{
+    return &m_replayTopAlbums;
+}
+MediaModel *AppController::replayTopArtistsModel()
+{
+    return &m_replayTopArtists;
+}
+MediaModel *AppController::playlistFolderModel()
+{
+    return &m_playlistFolder;
+}
+QString AppController::playlistFolderTitle() const
+{
+    return m_playlistFolderTitle;
+}
+QString AppController::playlistFolderId() const
+{
+    return m_playlistFolderId;
+}
+MediaModel *AppController::searchCuratorsModel()
+{
+    return &m_searchCurators;
+}
+MediaModel *AppController::searchActivitiesModel()
+{
+    return &m_searchActivities;
+}
+QString AppController::detailCuratorId() const
+{
+    return m_detailCuratorId;
+}
+QString AppController::detailCuratorName() const
+{
+    return m_detailCuratorName;
+}
+QString AppController::detailRecordLabelId() const
+{
+    return m_detailRecordLabelId;
+}
+QString AppController::detailRecordLabelName() const
+{
+    return m_detailRecordLabelName;
 }
 QString AppController::detailTitle() const
 {
@@ -745,6 +803,98 @@ void AppController::handleArtistDetail(const QJsonDocument &document)
     setError({});
 }
 
+void AppController::handleReplay(const QJsonDocument &document)
+{
+    if (qEnvironmentVariableIsSet("KADENZA_TRACE_REPLAY"))
+        qWarning().noquote() << "kadenza: replay response" << document.toJson(QJsonDocument::Compact);
+    const auto data = document.object().value(QStringLiteral("data")).toArray();
+    if (data.isEmpty()) {
+        // No eligible year yet (a brand new account, for instance): leave the
+        // shelves empty rather than stuck loading forever.
+        m_replayTopSongs.setLoading(false);
+        m_replayTopAlbums.setLoading(false);
+        m_replayTopArtists.setLoading(false);
+        return;
+    }
+    const auto resource = data.first().toObject();
+    const auto views = resource.value(QStringLiteral("views")).toObject();
+    // Unlike every other `views`/`relationships` shelf in this API, each row
+    // here is not the song/album/artist itself but a *PeriodSummaries
+    // wrapper (per Apple's own dictionary names) with the actual resource one
+    // level deeper, behind a singular relationship named after it — e.g. an
+    // AlbumPeriodSummaries row's real Albums resource sits at
+    // relationships.album.data[0], not at the row's own attributes.
+    const auto unwrap = [&views](const QString &viewName, const QString &relationshipName) {
+        QJsonArray unwrapped;
+        for (const auto &row : views.value(viewName).toObject().value(QStringLiteral("data")).toArray()) {
+            const auto nested
+                = row.toObject().value(QStringLiteral("relationships")).toObject().value(relationshipName).toObject().value(QStringLiteral("data")).toArray();
+            if (!nested.isEmpty())
+                unwrapped.append(nested.first());
+        }
+        return unwrapped;
+    };
+    // Ratings for songs are deliberately not requested here: when the shelf is
+    // bare (see fillReplayShelf) the model is still empty at this point and the
+    // batched resolve that will populate it finishes later, asynchronously —
+    // fetching ratings after the fact would need its own completion tracking
+    // for what is only a small cosmetic gap (no love/dislike icons on this one
+    // shelf), so it is left alone rather than adding that machinery.
+    fillReplayShelf(unwrap(QStringLiteral("top-songs"), QStringLiteral("song")), QStringLiteral("songs"), &m_replayTopSongs);
+    fillReplayShelf(unwrap(QStringLiteral("top-albums"), QStringLiteral("album")), QStringLiteral("albums"), &m_replayTopAlbums);
+    requestRatingsFor(&m_replayTopAlbums);
+    fillReplayShelf(unwrap(QStringLiteral("top-artists"), QStringLiteral("artist")), QStringLiteral("artists"), &m_replayTopArtists);
+    setError({});
+}
+
+void AppController::fillReplayShelf(const QJsonArray &items, const QString &catalogType, MediaModel *model)
+{
+    // Confirmed against a real account: album and artist period-summary rows
+    // embed the full resource, but song rows are a bare id/type/href
+    // reference with no attributes at all. Detected rather than hardcoded to
+    // "songs only", in case that varies by account or region.
+    const bool bare = !items.isEmpty() && !items.first().toObject().contains(QStringLiteral("attributes"));
+    if (!bare) {
+        model->replace(items);
+        model->setLoading(false);
+        return;
+    }
+    QStringList ids;
+    for (const auto &value : items) {
+        const QString id = value.toObject().value(QStringLiteral("id")).toString();
+        if (!id.isEmpty())
+            ids.push_back(id);
+    }
+    if (ids.isEmpty()) {
+        model->setLoading(false);
+        return;
+    }
+    for (int start = 0; start < ids.size(); start += kRatingsBatchSize) {
+        const auto batch = ids.mid(start, kRatingsBatchSize);
+        requestModel(kReplayResolveTagPrefix + catalogType + QLatin1Char('-') + QString::number(start),
+                     QStringLiteral("/v1/catalog/%1?ids[%2]=%3").arg(m_api.storefront(), catalogType, batch.join(QLatin1Char(','))), model,
+                     start > 0);
+    }
+}
+
+void AppController::handleFolderContents(const QJsonDocument &document)
+{
+    const auto data = document.object().value(QStringLiteral("data")).toArray();
+    if (data.isEmpty()) {
+        m_playlistFolder.setLoading(false);
+        return;
+    }
+    const auto resource = data.first().toObject();
+    m_playlistFolderId = resource.value(QStringLiteral("id")).toString();
+    m_playlistFolderTitle = resource.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("name")).toString();
+    Q_EMIT playlistFolderChanged();
+    const auto children
+        = resource.value(QStringLiteral("relationships")).toObject().value(QStringLiteral("children")).toObject().value(QStringLiteral("data")).toArray();
+    m_playlistFolder.replace(children);
+    m_playlistFolder.setLoading(false);
+    setError({});
+}
+
 void AppController::refreshCachedModels(const QString &cacheKind)
 {
     auto *model = modelForKind(cacheKind);
@@ -771,6 +921,8 @@ void AppController::search(const QString &term)
         m_searchAlbums.clear();
         m_searchArtists.clear();
         m_searchPlaylists.clear();
+        m_searchCurators.clear();
+        m_searchActivities.clear();
         return;
     }
     m_searchHistory.removeAll(trimmed);
@@ -790,24 +942,54 @@ void AppController::search(const QString &term)
                            QStringLiteral("library-songs,library-albums,"
                                           "library-artists,library-playlists"));
         requestModel(QStringLiteral("search"), QStringLiteral("/v1/me/library/search?%1").arg(query.toString()), &m_search);
+        m_searchCurators.clear();
+        m_searchActivities.clear();
         return;
     }
     query.addQueryItem(QStringLiteral("types"), QStringLiteral("songs,albums,artists,playlists"));
     requestModel(QStringLiteral("search"), QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), query.toString()), &m_search);
+
+    // Fired as two separate requests, each with its own tag: whether Apple's
+    // `types=` enum even accepts these values is unconfirmed, and folding them
+    // into the query above would risk taking the whole search down with them
+    // if it does not.
+    QUrlQuery curatorQuery;
+    curatorQuery.addQueryItem(QStringLiteral("term"), trimmed);
+    curatorQuery.addQueryItem(QStringLiteral("limit"), QStringLiteral("10"));
+    curatorQuery.addQueryItem(QStringLiteral("types"), QStringLiteral("curators"));
+    requestModel(QStringLiteral("search-curators"), QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), curatorQuery.toString()),
+                 &m_searchCurators);
+
+    QUrlQuery activityQuery;
+    activityQuery.addQueryItem(QStringLiteral("term"), trimmed);
+    activityQuery.addQueryItem(QStringLiteral("limit"), QStringLiteral("10"));
+    activityQuery.addQueryItem(QStringLiteral("types"), QStringLiteral("activities"));
+    requestModel(QStringLiteral("search-activities"), QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), activityQuery.toString()),
+                 &m_searchActivities);
 }
 
-void AppController::loadCharts(bool refresh)
+void AppController::loadCharts(bool refresh, const QString &genreId)
 {
     if (m_demo || !authenticated())
         return;
-    if (!refresh && m_chartSongs.rowCount() > 0)
+    // A genre change always refetches even without an explicit refresh; only
+    // the plain "page just opened, already have data" case is skipped.
+    if (!refresh && genreId.isEmpty() && m_chartSongs.rowCount() > 0)
         return;
     // offset must stay below 200 on this endpoint; a single page is plenty.
-    requestModel(QStringLiteral("charts"),
-                 QStringLiteral("/v1/catalog/%1/charts?types=songs,albums,"
-                                "playlists&chart=most-played&limit=20")
-                     .arg(m_api.storefront()),
-                 &m_chartSongs);
+    QString path = QStringLiteral("/v1/catalog/%1/charts?types=songs,albums,"
+                                  "playlists&chart=most-played&limit=20")
+                       .arg(m_api.storefront());
+    if (!genreId.isEmpty())
+        path += QStringLiteral("&genre=%1").arg(genreId);
+    requestModel(QStringLiteral("charts"), path, &m_chartSongs);
+}
+
+void AppController::loadGenres()
+{
+    if (m_demo || !authenticated())
+        return;
+    m_api.get(QStringLiteral("genres"), QStringLiteral("/v1/catalog/%1/genres").arg(m_api.storefront()));
 }
 
 void AppController::requestRatingsFor(MediaModel *model)
@@ -905,6 +1087,52 @@ void AppController::loadStations(bool refresh)
     // Stations have their own recents endpoint; they are not a `type` of
     // /v1/me/recent/played. The recent endpoints cap limit at 10.
     requestModel(QStringLiteral("stations"), QStringLiteral("/v1/me/recent/radio-stations?limit=10"), &m_stations);
+}
+
+void AppController::loadLiveStations(const QString &genreId)
+{
+    if (m_demo || !authenticated())
+        return;
+    const QString path = genreId.isEmpty()
+        ? QStringLiteral("/v1/catalog/%1/stations?filter[featured]=apple-music-live-radio").arg(m_api.storefront())
+        : QStringLiteral("/v1/catalog/%1/station-genres/%2/stations").arg(m_api.storefront(), genreId);
+    requestModel(QStringLiteral("live-stations"), path, &m_liveStations);
+}
+
+void AppController::loadPersonalStation()
+{
+    if (m_demo || !authenticated())
+        return;
+    requestModel(QStringLiteral("personal-station"),
+                 QStringLiteral("/v1/catalog/%1/stations?filter[identity]=personal").arg(m_api.storefront()),
+                 &m_personalStation);
+}
+
+void AppController::loadStationGenres()
+{
+    if (m_demo || !authenticated())
+        return;
+    m_api.get(QStringLiteral("station-genres"), QStringLiteral("/v1/catalog/%1/station-genres").arg(m_api.storefront()));
+}
+
+void AppController::loadReplay(bool refresh)
+{
+    if (m_demo || !authenticated())
+        return;
+    if (!refresh && m_replayTopSongs.rowCount() > 0)
+        return;
+    requestModel(QStringLiteral("replay"),
+                 QStringLiteral("/v1/me/music-summaries?filter[year]=latest&views=top-songs,top-albums,top-artists"),
+                 &m_replayTopSongs);
+}
+
+void AppController::loadPlaylistFolder(const QString &id)
+{
+    if (m_demo || !authenticated())
+        return;
+    const QString folderId = id.isEmpty() ? QStringLiteral("p.playlistsroot") : id;
+    requestModel(QStringLiteral("playlist-folder"), QStringLiteral("/v1/me/library/playlist-folders/%1?include=children").arg(folderId),
+                 &m_playlistFolder);
 }
 
 void AppController::setRating(const QString &id, const QString &type, int value)
@@ -1013,6 +1241,10 @@ void AppController::openDetail(
         }
     }
     m_detailTracks.clear();
+    m_detailCuratorId.clear();
+    m_detailCuratorName.clear();
+    m_detailRecordLabelId.clear();
+    m_detailRecordLabelName.clear();
     const QString ratingId = catalogId.isEmpty() ? id : catalogId;
     m_detailRatingId = ratableType(type) && !ratingId.startsWith(QLatin1Char('i')) ? ratingId : QString();
     m_detailRating = 0;
@@ -1055,6 +1287,14 @@ QString AppController::collectionPath(const QString &id, const QString &catalogI
         return artistPath(resourceId);
     if (type == QStringLiteral("library-artists"))
         return catalogId.isEmpty() ? QStringLiteral("/v1/me/library/artists/%1?include=albums,catalog").arg(id) : artistPath(catalogId);
+    if (type == QStringLiteral("curators"))
+        return QStringLiteral("/v1/catalog/%1/curators/%2?include=playlists").arg(m_api.storefront(), resourceId);
+    if (type == QStringLiteral("apple-curators"))
+        return QStringLiteral("/v1/catalog/%1/apple-curators/%2?include=playlists").arg(m_api.storefront(), resourceId);
+    if (type == QStringLiteral("activities"))
+        return QStringLiteral("/v1/catalog/%1/activities/%2?include=playlists").arg(m_api.storefront(), resourceId);
+    if (type == QStringLiteral("record-labels"))
+        return QStringLiteral("/v1/catalog/%1/record-labels/%2?include=albums").arg(m_api.storefront(), resourceId);
     return {};
 }
 
@@ -1118,12 +1358,51 @@ QList<MediaModel *> AppController::allModels()
 
 void AppController::setFavorite(const QString &id, const QString &type, bool favorite)
 {
-    m_player.setFavorite(id, type, favorite);
+    if (m_demo || id.isEmpty())
+        return;
+    QString resource = type;
+    resource.remove(QStringLiteral("library-"));
+    if (resource.isEmpty())
+        resource = QStringLiteral("songs");
+    const QString path = QStringLiteral("/v1/me/favorites?ids[%1]=%2").arg(resource, id);
+    if (favorite)
+        m_api.post(kFavoriteAddTagPrefix + id, path);
+    else
+        m_api.del(kFavoriteRemoveTagPrefix + id, path);
 }
 
 void AppController::setInLibrary(const QString &id, const QString &type, bool inLibrary)
 {
-    m_player.setInLibrary(id, type, inLibrary);
+    if (m_demo || id.isEmpty())
+        return;
+    QString resource = type;
+    resource.remove(QStringLiteral("library-"));
+    if (resource.isEmpty())
+        resource = QStringLiteral("songs");
+    if (inLibrary)
+        m_api.post(kLibraryAddTagPrefix + id, QStringLiteral("/v1/me/library?ids[%1]=%2").arg(resource, id));
+    else
+        m_api.del(kLibraryRemoveTagPrefix + id, QStringLiteral("/v1/me/library/%1/%2").arg(resource, id));
+}
+
+// One place for the state update that a favorite or library write confirms,
+// shared by both kinds since only the model method and message text differ.
+void AppController::applyLibraryWrite(const QString &id, bool enabled, bool isFavorite)
+{
+    auto models = allModels();
+    models.append(m_player.queueModel());
+    for (auto *model : models) {
+        if (isFavorite)
+            model->setFavorite(id, enabled);
+        else
+            model->setInLibrary(id, enabled);
+    }
+    if (isFavorite)
+        m_cache.setFavorite(id, enabled);
+    else
+        m_cache.setInLibrary(id, enabled);
+    setMessage(isFavorite ? (enabled ? tr("Added to Favorites") : tr("Removed from Favorites"))
+                          : (enabled ? tr("Added to Library") : tr("Removed from Library")));
 }
 
 void AppController::createPlaylist(const QString &name)
@@ -1192,8 +1471,65 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
         handleArtistDetail(document);
         return;
     }
+    if (tag == QStringLiteral("replay")) {
+        m_pendingModels.remove(tag);
+        if (m_loadingCount > 0)
+            --m_loadingCount;
+        Q_EMIT loadingChanged();
+        handleReplay(document);
+        return;
+    }
+    if (tag == QStringLiteral("playlist-folder")) {
+        m_pendingModels.remove(tag);
+        if (m_loadingCount > 0)
+            --m_loadingCount;
+        Q_EMIT loadingChanged();
+        handleFolderContents(document);
+        return;
+    }
+    if (tag == QStringLiteral("search-curators") || tag == QStringLiteral("search-activities")) {
+        auto *model = m_pendingModels.take(tag);
+        if (m_loadingCount > 0)
+            --m_loadingCount;
+        Q_EMIT loadingChanged();
+        if (!model)
+            return;
+        const QString kind = tag == QStringLiteral("search-curators") ? QStringLiteral("curators") : QStringLiteral("activities");
+        const auto sectionData = document.object().value(QStringLiteral("results")).toObject().value(kind).toObject().value(QStringLiteral("data")).toArray();
+        model->replace(sectionData);
+        model->setLoading(false);
+        return;
+    }
+    if (tag == QStringLiteral("genres") || tag == QStringLiteral("station-genres")) {
+        QVariantList list;
+        for (const auto &value : document.object().value(QStringLiteral("data")).toArray()) {
+            const auto resource = value.toObject();
+            list.push_back(QVariantMap{
+                {QStringLiteral("id"), resource.value(QStringLiteral("id")).toString()},
+                {QStringLiteral("name"), resource.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("name")).toString()},
+            });
+        }
+        if (tag == QStringLiteral("genres")) {
+            m_genres = list;
+            Q_EMIT genresChanged();
+        } else {
+            m_stationGenres = list;
+            Q_EMIT stationGenresChanged();
+        }
+        return;
+    }
     if (tag.startsWith(kRatingsTagPrefix)) {
         handleRatings(tag, document);
+        return;
+    }
+    if (tag.startsWith(kFavoriteAddTagPrefix) || tag.startsWith(kFavoriteRemoveTagPrefix)) {
+        const bool enabled = tag.startsWith(kFavoriteAddTagPrefix);
+        applyLibraryWrite(tag.mid((enabled ? kFavoriteAddTagPrefix : kFavoriteRemoveTagPrefix).size()), enabled, true);
+        return;
+    }
+    if (tag.startsWith(kLibraryAddTagPrefix) || tag.startsWith(kLibraryRemoveTagPrefix)) {
+        const bool enabled = tag.startsWith(kLibraryAddTagPrefix);
+        applyLibraryWrite(tag.mid((enabled ? kLibraryAddTagPrefix : kLibraryRemoveTagPrefix).size()), enabled, false);
         return;
     }
     if (tag == QStringLiteral("lookup")) {
@@ -1290,9 +1626,32 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
     } else if (tag == QStringLiteral("detail") && !root.value(QStringLiteral("data")).toArray().isEmpty()) {
         const auto resource = root.value(QStringLiteral("data")).toArray().first().toObject();
         const QString type = resource.value(QStringLiteral("type")).toString();
+        const auto attributes = resource.value(QStringLiteral("attributes")).toObject();
         if (type != QStringLiteral("songs") && type != QStringLiteral("library-songs")) {
             if (m_detailTitle.isEmpty())
-                m_detailTitle = resource.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("name")).toString();
+                m_detailTitle = attributes.value(QStringLiteral("name")).toString();
+            Q_EMIT detailChanged();
+        }
+        // Only playlists carry a curator and only albums a record label; every
+        // other type simply has neither relationship, so these stay empty. The
+        // relationship reference (id) is present without an extra `include=` —
+        // only its embedded attributes would need that — so the display name is
+        // read from the plain attribute Apple already puts on the resource
+        // itself rather than risking an unconfirmed relationship name on an
+        // `include=` list that the existing album/playlist requests depend on.
+        const auto relationships = resource.value(QStringLiteral("relationships")).toObject();
+        const auto curatorRef = relationships.value(QStringLiteral("curator")).toObject().value(QStringLiteral("data")).toArray();
+        if (!curatorRef.isEmpty()) {
+            m_detailCuratorId = curatorRef.first().toObject().value(QStringLiteral("id")).toString();
+            m_detailCuratorName = attributes.value(QStringLiteral("curatorName")).toString();
+            Q_EMIT detailChanged();
+        }
+        auto labelRef = relationships.value(QStringLiteral("record-labels")).toObject().value(QStringLiteral("data")).toArray();
+        if (labelRef.isEmpty())
+            labelRef = relationships.value(QStringLiteral("recordLabels")).toObject().value(QStringLiteral("data")).toArray();
+        if (!labelRef.isEmpty()) {
+            m_detailRecordLabelId = labelRef.first().toObject().value(QStringLiteral("id")).toString();
+            m_detailRecordLabelName = attributes.value(QStringLiteral("recordLabel")).toString();
             Q_EMIT detailChanged();
         }
         extractCollection(root, m_detailType, data, next);
@@ -1326,12 +1685,33 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
 
 void AppController::handleFailure(const QString &tag, int status, const QString &message)
 {
+    if (tag == QStringLiteral("replay") && qEnvironmentVariableIsSet("KADENZA_TRACE_REPLAY"))
+        qWarning().noquote() << "kadenza: replay request failed" << status << message;
     if (tag.startsWith(kRatingsTagPrefix)) {
         // Unknown rating state is not worth an error banner.
         return;
     }
-    if (tag == QStringLiteral("search-hints") || tag == QStringLiteral("storefront") || tag == QStringLiteral("recommendations")) {
-        // Both are best-effort; failing them should not disturb the user.
+    if (tag.startsWith(kFavoriteAddTagPrefix) || tag.startsWith(kFavoriteRemoveTagPrefix) || tag.startsWith(kLibraryAddTagPrefix)
+        || tag.startsWith(kLibraryRemoveTagPrefix)) {
+        setError(message.isEmpty() ? tr("Apple Music rejected that change.") : message);
+        return;
+    }
+    if (tag == QStringLiteral("search-hints") || tag == QStringLiteral("storefront") || tag == QStringLiteral("recommendations")
+        || tag == QStringLiteral("genres") || tag == QStringLiteral("station-genres")) {
+        // All best-effort; failing them should not disturb the user.
+        return;
+    }
+    if (tag == QStringLiteral("search-curators") || tag == QStringLiteral("search-activities")) {
+        // Whether Apple's search `types=` enum even accepts these values was
+        // never confirmed, so a rejection here just leaves the shelf empty
+        // rather than surfacing "Apple Music request failed" over a working
+        // search.
+        auto *model = m_pendingModels.take(tag);
+        if (model)
+            model->setLoading(false);
+        if (m_loadingCount > 0)
+            --m_loadingCount;
+        Q_EMIT loadingChanged();
         return;
     }
     if (tag.startsWith(kSyncTagPrefix)) {

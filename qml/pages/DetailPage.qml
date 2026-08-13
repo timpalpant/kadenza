@@ -7,10 +7,17 @@ Kirigami.ScrollablePage {
     id: page
     title: App.detailTitle
     readonly property bool artistPage: App.detailType === "artists" || App.detailType === "library-artists"
+    // Curators, Apple Curators, Activities and Record Labels have no track
+    // list of their own — each is just a header plus a grid of the playlists
+    // or albums found inside it, so they share one simple layout distinct
+    // from both the artist page's many shelves and the plain track list.
+    readonly property bool collectionShelfPage: ["curators", "apple-curators",
+                                                 "activities", "record-labels"]
+                                                 .indexOf(App.detailType) >= 0
 
     actions: [
         Kirigami.Action {
-            visible: page.artistPage && !applicationWindow().compactMode
+            visible: (page.artistPage || page.collectionShelfPage) && !applicationWindow().compactMode
             displayHint: Kirigami.DisplayHint.KeepVisible
             displayComponent: ArtworkSizeSlider {}
         }
@@ -60,11 +67,33 @@ Kirigami.ScrollablePage {
                     // The header itself has only a name; the tracks sometimes
                     // carry the artist relationship, so borrow the first
                     // track's id when there is one and fall back to the name.
-                    linked: !page.artistPage && App.detailSubtitle.length > 0
+                    linked: !page.artistPage && !page.collectionShelfPage && App.detailSubtitle.length > 0
                     onActivated: applicationWindow().openArtist(
                                      App.detailTracksModel.count > 0
                                      ? App.detailTracksModel.get(0).artistId : "",
                                      App.detailSubtitle)
+                    Layout.fillWidth: true
+                }
+                LinkLabel {
+                    text: App.detailCuratorName.length > 0
+                          ? i18n("Curated by %1", App.detailCuratorName)
+                          : i18n("Curated by another user")
+                    visible: !page.collectionShelfPage && App.detailCuratorId.length > 0
+                    linked: true
+                    onActivated: applicationWindow().openDetail(
+                                     App.detailCuratorId, App.detailCuratorId, "curators",
+                                     App.detailCuratorName, "", "")
+                    Layout.fillWidth: true
+                }
+                LinkLabel {
+                    text: App.detailRecordLabelName.length > 0
+                          ? i18n("More from %1", App.detailRecordLabelName)
+                          : i18n("More from this label")
+                    visible: !page.collectionShelfPage && App.detailRecordLabelId.length > 0
+                    linked: true
+                    onActivated: applicationWindow().openDetail(
+                                     App.detailRecordLabelId, App.detailRecordLabelId, "record-labels",
+                                     App.detailRecordLabelName, "", "")
                     Layout.fillWidth: true
                 }
                 RowLayout {
@@ -105,7 +134,7 @@ Kirigami.ScrollablePage {
                     }
                 }
                 RowLayout {
-                    visible: !page.artistPage
+                    visible: !page.artistPage && !page.collectionShelfPage
                     QQC2.Button {
                         text: i18n("Play")
                         icon.name: "media-playback-start"
@@ -148,7 +177,7 @@ Kirigami.ScrollablePage {
         // Album and playlist tracks -------------------------------------
         ListView {
             model: App.detailTracksModel
-            visible: !page.artistPage
+            visible: !page.artistPage && !page.collectionShelfPage
             interactive: false
             reuseItems: true
             Layout.fillWidth: true
@@ -157,6 +186,24 @@ Kirigami.ScrollablePage {
                 onPlayRequested: App.playDetail(index)
                 onOpenRequested: {}
             }
+        }
+
+        // Curator, Apple Curator, Activity and Record Label pages: a grid of
+        // the playlists or albums found inside, not a track list.
+        MediaGrid {
+            model: App.detailTracksModel
+            visible: page.collectionShelfPage
+            Layout.fillWidth: true
+            Layout.preferredHeight: fullHeight
+        }
+
+        Kirigami.PlaceholderMessage {
+            visible: page.collectionShelfPage && !App.detailTracksModel.loading
+                     && App.detailTracksModel.count === 0
+            text: i18n("Nothing here yet")
+            icon.name: "view-media-playlist"
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: Kirigami.Units.gridUnit * 6
         }
 
         // Artist page ----------------------------------------------------

@@ -27,12 +27,15 @@ GridView {
 
     delegate: MediaGridDelegate {
         // A station is an endless stream with no track list to show, so
-        // opening one just starts it.
+        // opening one just starts it. A folder has no detail page of its own;
+        // it navigates one level deeper into the folder browser instead.
         onOpenRequested: mediaType === "stations"
                          ? App.player.playStation(catalogId || mediaId)
-                         : applicationWindow().openDetail(mediaId, catalogId,
-                                                          mediaType, title,
-                                                          subtitle, artwork)
+                         : mediaType === "library-playlist-folders"
+                           ? applicationWindow().openPlaylistFolder(mediaId)
+                           : applicationWindow().openDetail(mediaId, catalogId,
+                                                            mediaType, title,
+                                                            subtitle, artwork)
         onPlayRequested: mediaType === "stations"
                          ? App.player.playStation(catalogId || mediaId)
                          : App.playCollection(mediaId, catalogId, mediaType)

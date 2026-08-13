@@ -37,6 +37,12 @@ Kirigami.Page {
             icon.name: "list-add"
             visible: page.kind === "playlists"
             onTriggered: applicationWindow().showCreatePlaylist()
+        },
+        Kirigami.Action {
+            text: i18n("Browse Folders")
+            icon.name: "folder"
+            visible: page.kind === "playlists"
+            onTriggered: applicationWindow().openPlaylistFolder("")
         }
     ]
 

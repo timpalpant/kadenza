@@ -11,6 +11,8 @@ Kirigami.ScrollablePage {
                                        + App.searchAlbumsModel.count
                                        + App.searchSongsModel.count
                                        + App.searchPlaylistsModel.count
+                                       + App.searchCuratorsModel.count
+                                       + App.searchActivitiesModel.count
     readonly property real tileWidth: Kirigami.Units.gridUnit * App.artworkSize
     readonly property real labelHeight: Kirigami.Units.gridUnit * 3
 
@@ -197,6 +199,52 @@ Kirigami.ScrollablePage {
         }
         ListView {
             model: App.searchPlaylistsModel
+            orientation: ListView.Horizontal
+            flickableDirection: Flickable.HorizontalFlick
+            spacing: Kirigami.Units.smallSpacing
+            clip: true
+            visible: count > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: page.tileWidth + page.labelHeight
+            delegate: MediaGridDelegate {
+                width: page.tileWidth
+                height: page.tileWidth + page.labelHeight
+                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
+            }
+            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
+        }
+
+        Kirigami.Heading {
+            text: i18n("Curators")
+            level: 2
+            visible: App.searchCuratorsModel.count > 0
+        }
+        ListView {
+            model: App.searchCuratorsModel
+            orientation: ListView.Horizontal
+            flickableDirection: Flickable.HorizontalFlick
+            spacing: Kirigami.Units.smallSpacing
+            clip: true
+            visible: count > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: page.tileWidth + page.labelHeight
+            delegate: MediaGridDelegate {
+                width: page.tileWidth
+                height: page.tileWidth + page.labelHeight
+                onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+                onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
+            }
+            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
+        }
+
+        Kirigami.Heading {
+            text: i18n("Activities")
+            level: 2
+            visible: App.searchActivitiesModel.count > 0
+        }
+        ListView {
+            model: App.searchActivitiesModel
             orientation: ListView.Horizontal
             flickableDirection: Flickable.HorizontalFlick
             spacing: Kirigami.Units.smallSpacing

@@ -60,7 +60,9 @@ qt_add_qml_module(kadenza
         qml/pages/SearchPage.qml
         qml/pages/ChartsPage.qml
         qml/pages/RadioPage.qml
+        qml/pages/ReplayPage.qml
         qml/pages/DetailPage.qml
+        qml/pages/PlaylistFolderPage.qml
         qml/pages/QueuePage.qml
         qml/pages/SettingsPage.qml
         qml/pages/AboutPage.qml
