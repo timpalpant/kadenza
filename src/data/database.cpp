@@ -142,8 +142,7 @@ bool Database::open(const QString &path)
     }
 
     const QString name = connectionName();
-    QSqlDatabase database = QSqlDatabase::contains(name) ? QSqlDatabase::database(name)
-                                                         : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), name);
+    QSqlDatabase database = QSqlDatabase::contains(name) ? QSqlDatabase::database(name) : QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), name);
     database.setDatabaseName(file);
 
     if (!database.open()) {

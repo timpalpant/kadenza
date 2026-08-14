@@ -48,7 +48,7 @@ protected:
                                 "Content-Type: image/png\r\n"
                                 "Cache-Control: max-age=3600\r\n"
                                 "Content-Length: "
-                + QByteArray::number(m_png.size()) + "\r\n\r\n";
+                                + QByteArray::number(m_png.size()) + "\r\n\r\n";
             socket->write(header);
             socket->write(m_png);
             socket->flush();

@@ -69,11 +69,11 @@ void extractCollection(const QJsonObject &root, const QString &requestedType, QJ
         return;
     }
     const QString relationshipName = requestedType.contains(QStringLiteral("artist")) || requestedType == QStringLiteral("record-labels")
-        ? QStringLiteral("albums")
-        : (requestedType == QStringLiteral("curators") || requestedType == QStringLiteral("apple-curators")
-           || requestedType == QStringLiteral("activities"))
-            ? QStringLiteral("playlists")
-            : QStringLiteral("tracks");
+                                         ? QStringLiteral("albums")
+                                     : (requestedType == QStringLiteral("curators") || requestedType == QStringLiteral("apple-curators")
+                                        || requestedType == QStringLiteral("activities"))
+                                         ? QStringLiteral("playlists")
+                                         : QStringLiteral("tracks");
     const auto relationship = resource.value(QStringLiteral("relationships")).toObject().value(relationshipName).toObject();
     data = relationship.value(QStringLiteral("data")).toArray();
     next = relationship.value(QStringLiteral("next")).toString();
@@ -828,8 +828,13 @@ void AppController::handleReplay(const QJsonDocument &document)
     const auto unwrap = [&views](const QString &viewName, const QString &relationshipName) {
         QJsonArray unwrapped;
         for (const auto &row : views.value(viewName).toObject().value(QStringLiteral("data")).toArray()) {
-            const auto nested
-                = row.toObject().value(QStringLiteral("relationships")).toObject().value(relationshipName).toObject().value(QStringLiteral("data")).toArray();
+            const auto nested = row.toObject()
+                                    .value(QStringLiteral("relationships"))
+                                    .toObject()
+                                    .value(relationshipName)
+                                    .toObject()
+                                    .value(QStringLiteral("data"))
+                                    .toArray();
             if (!nested.isEmpty())
                 unwrapped.append(nested.first());
         }
@@ -873,7 +878,8 @@ void AppController::fillReplayShelf(const QJsonArray &items, const QString &cata
     for (int start = 0; start < ids.size(); start += kRatingsBatchSize) {
         const auto batch = ids.mid(start, kRatingsBatchSize);
         requestModel(kReplayResolveTagPrefix + catalogType + QLatin1Char('-') + QString::number(start),
-                     QStringLiteral("/v1/catalog/%1?ids[%2]=%3").arg(m_api.storefront(), catalogType, batch.join(QLatin1Char(','))), model,
+                     QStringLiteral("/v1/catalog/%1?ids[%2]=%3").arg(m_api.storefront(), catalogType, batch.join(QLatin1Char(','))),
+                     model,
                      start > 0);
     }
 }
@@ -889,8 +895,12 @@ void AppController::handleFolderContents(const QJsonDocument &document)
     m_playlistFolderId = resource.value(QStringLiteral("id")).toString();
     m_playlistFolderTitle = resource.value(QStringLiteral("attributes")).toObject().value(QStringLiteral("name")).toString();
     Q_EMIT playlistFolderChanged();
-    const auto children
-        = resource.value(QStringLiteral("relationships")).toObject().value(QStringLiteral("children")).toObject().value(QStringLiteral("data")).toArray();
+    const auto children = resource.value(QStringLiteral("relationships"))
+                              .toObject()
+                              .value(QStringLiteral("children"))
+                              .toObject()
+                              .value(QStringLiteral("data"))
+                              .toArray();
     m_playlistFolder.replace(children);
     m_playlistFolder.setLoading(false);
     setError({});
@@ -958,14 +968,16 @@ void AppController::search(const QString &term)
     curatorQuery.addQueryItem(QStringLiteral("term"), trimmed);
     curatorQuery.addQueryItem(QStringLiteral("limit"), QStringLiteral("10"));
     curatorQuery.addQueryItem(QStringLiteral("types"), QStringLiteral("curators"));
-    requestModel(QStringLiteral("search-curators"), QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), curatorQuery.toString()),
+    requestModel(QStringLiteral("search-curators"),
+                 QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), curatorQuery.toString()),
                  &m_searchCurators);
 
     QUrlQuery activityQuery;
     activityQuery.addQueryItem(QStringLiteral("term"), trimmed);
     activityQuery.addQueryItem(QStringLiteral("limit"), QStringLiteral("10"));
     activityQuery.addQueryItem(QStringLiteral("types"), QStringLiteral("activities"));
-    requestModel(QStringLiteral("search-activities"), QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), activityQuery.toString()),
+    requestModel(QStringLiteral("search-activities"),
+                 QStringLiteral("/v1/catalog/%1/search?%2").arg(m_api.storefront(), activityQuery.toString()),
                  &m_searchActivities);
 }
 
@@ -1094,9 +1106,8 @@ void AppController::loadLiveStations(const QString &genreId)
 {
     if (m_demo || !authenticated())
         return;
-    const QString path = genreId.isEmpty()
-        ? QStringLiteral("/v1/catalog/%1/stations?filter[featured]=apple-music-live-radio").arg(m_api.storefront())
-        : QStringLiteral("/v1/catalog/%1/station-genres/%2/stations").arg(m_api.storefront(), genreId);
+    const QString path = genreId.isEmpty() ? QStringLiteral("/v1/catalog/%1/stations?filter[featured]=apple-music-live-radio").arg(m_api.storefront())
+                                           : QStringLiteral("/v1/catalog/%1/station-genres/%2/stations").arg(m_api.storefront(), genreId);
     requestModel(QStringLiteral("live-stations"), path, &m_liveStations);
 }
 
@@ -1132,8 +1143,8 @@ void AppController::loadPlaylistFolder(const QString &id)
     if (m_demo || !authenticated())
         return;
     const QString folderId = id.isEmpty() ? QStringLiteral("p.playlistsroot") : id;
-    requestModel(QStringLiteral("playlist-folder"), QStringLiteral("/v1/me/library/playlist-folders/%1?include=children").arg(folderId),
-                 &m_playlistFolder);
+    requestModel(
+        QStringLiteral("playlist-folder"), QStringLiteral("/v1/me/library/playlist-folders/%1?include=children").arg(folderId), &m_playlistFolder);
 }
 
 void AppController::setRating(const QString &id, const QString &type, int value)
@@ -1496,7 +1507,8 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
         if (!model)
             return;
         const QString kind = tag == QStringLiteral("search-curators") ? QStringLiteral("curators") : QStringLiteral("activities");
-        const auto sectionData = document.object().value(QStringLiteral("results")).toObject().value(kind).toObject().value(QStringLiteral("data")).toArray();
+        const auto sectionData
+            = document.object().value(QStringLiteral("results")).toObject().value(kind).toObject().value(QStringLiteral("data")).toArray();
         model->replace(sectionData);
         model->setLoading(false);
         return;
