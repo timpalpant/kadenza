@@ -7,6 +7,16 @@ target_link_libraries(kadenza-model-tests PRIVATE Qt6::Core Qt6::Test Qt6::Qml)
 add_test(NAME mediamodel COMMAND kadenza-model-tests)
 
 
+qt_add_executable(kadenza-filter-tests
+    mediafilterproxymodeltest.cpp
+    ../src/media/mediaitem.cpp ../src/media/mediaitem.h
+    ../src/media/mediamodel.cpp ../src/media/mediamodel.h
+    ../src/media/mediafilterproxymodel.cpp ../src/media/mediafilterproxymodel.h)
+target_include_directories(kadenza-filter-tests PRIVATE ../src/media)
+target_link_libraries(kadenza-filter-tests PRIVATE Qt6::Core Qt6::Test Qt6::Qml)
+add_test(NAME mediafilterproxy COMMAND kadenza-filter-tests)
+
+
 qt_add_executable(kadenza-cache-tests
     librarycachetest.cpp
     ../src/data/database.cpp ../src/data/database.h

@@ -12,7 +12,26 @@ Kirigami.Page {
                                       : kind === "songs" ? App.songsModel
                                       : kind === "albums" ? App.albumsModel
                                       : kind === "artists" ? App.artistsModel : App.playlistsModel
-    readonly property bool empty: !mediaModel.loading && mediaModel.count === 0
+
+    MediaFilterProxyModel {
+        id: proxyModel
+        sourceModel: mediaModel
+    }
+
+    readonly property bool empty: !mediaModel.loading && proxyModel.count === 0
+
+    header: QQC2.ToolBar {
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            Kirigami.SearchField {
+                id: searchField
+                placeholderText: i18n("Search %1", page.title.toLowerCase())
+                Layout.fillWidth: true
+                onTextChanged: proxyModel.filterString = searchField.text
+            }
+        }
+    }
 
     actions: [
         Kirigami.Action {
@@ -71,11 +90,11 @@ Kirigami.Page {
             QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
 
             ListView {
-                model: page.mediaModel
+                model: proxyModel
                 clip: true
                 reuseItems: true
                 delegate: MediaDelegate {
-                    onPlayRequested: App.playModel(page.mediaModel, index)
+                    onPlayRequested: App.playModel(page.mediaModel, proxyModel.mapToSource(proxyModel.index(index, 0)).row)
                     onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
                 }
                 onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
@@ -90,7 +109,7 @@ Kirigami.Page {
             QQC2.ScrollBar.vertical.policy: QQC2.ScrollBar.AsNeeded
 
             MediaGrid {
-                model: page.mediaModel
+                model: proxyModel
                 sizeScale: page.kind === "artists" ? 0.75 : 1
                 onAtYEndChanged: if (atYEnd) App.loadMore(page.kind)
             }
@@ -130,7 +149,9 @@ Kirigami.Page {
     Kirigami.PlaceholderMessage {
         anchors.centerIn: parent
         visible: page.empty
-        text: page.mediaModel.error.length > 0 ? page.mediaModel.error : i18n("Nothing here yet")
+        text: searchField.text.length > 0
+              ? i18n("No results")
+              : (page.mediaModel.error.length > 0 ? page.mediaModel.error : i18n("Nothing here yet"))
         icon.name: page.iconName
     }
 }
