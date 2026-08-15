@@ -42,6 +42,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.2" date="2026-08-14">
+      <description>
+        <p>Fixes and polish across the library and search.</p>
+        <ul>
+          <li>Fix removing songs from the library and stale pages after adding to it</li>
+          <li>Autofocus the search field when opening a page that has one</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-08-14">
       <description>
         <p>Adds search bars to the Songs, Artists, and Albums library pages.</p>
