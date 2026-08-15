@@ -48,30 +48,6 @@ Kirigami.ScrollablePage {
         }
 
         Item {
-            Kirigami.FormData.label: i18n("Shortcuts")
-            Kirigami.FormData.isSection: true
-        }
-
-        QQC2.Label {
-            Kirigami.FormData.label: i18n("Media keys:")
-            text: i18n("Play/Pause, Next and Previous control Kadenza.")
-            wrapMode: Text.Wrap
-            Layout.maximumWidth: Kirigami.Units.gridUnit * 24
-        }
-        QQC2.Label {
-            Kirigami.FormData.label: i18n("Show Kadenza:")
-            text: i18nc("Keyboard shortcut", "Meta+Alt+K")
-            font.family: "monospace"
-        }
-        QQC2.Label {
-            text: i18n("Both can be reassigned in System Settings under Shortcuts.")
-            font: Kirigami.Theme.smallFont
-            color: Kirigami.Theme.disabledTextColor
-            wrapMode: Text.Wrap
-            Layout.maximumWidth: Kirigami.Units.gridUnit * 24
-        }
-
-        Item {
             Kirigami.FormData.label: i18n("Account")
             Kirigami.FormData.isSection: true
         }
