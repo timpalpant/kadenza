@@ -27,8 +27,10 @@ Kirigami.Page {
             Kirigami.SearchField {
                 id: searchField
                 placeholderText: i18n("Search %1", page.title.toLowerCase())
+                focus: true
                 Layout.fillWidth: true
                 onTextChanged: proxyModel.filterString = searchField.text
+                Component.onCompleted: Qt.callLater(() => searchField.forceActiveFocus())
             }
         }
     }

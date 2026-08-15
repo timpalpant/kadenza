@@ -40,6 +40,7 @@ Kirigami.ScrollablePage {
                 delaySearch: true
                 focus: true
                 Layout.fillWidth: true
+                Component.onCompleted: Qt.callLater(() => field.forceActiveFocus())
                 onAccepted: App.search(text)
                 // Apple's autocomplete only covers the catalog.
                 onTextChanged: if (!App.searchLibrary)
