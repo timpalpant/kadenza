@@ -163,6 +163,39 @@ void MediaModel::appendItems(const QList<MediaItem> &items)
     Q_EMIT countChanged();
 }
 
+void MediaModel::insertAtFront(const MediaItem &item)
+{
+    const int first = 0;
+    beginInsertRows({}, first, first);
+    m_items.prepend(item);
+    endInsertRows();
+    Q_EMIT countChanged();
+}
+
+void MediaModel::insertAlphabetically(const MediaItem &item)
+{
+    int row = 0;
+    while (row < m_items.size() && QString::compare(m_items.at(row).title, item.title, Qt::CaseInsensitive) <= 0)
+        ++row;
+    beginInsertRows({}, row, row);
+    m_items.insert(row, item);
+    endInsertRows();
+    Q_EMIT countChanged();
+}
+
+void MediaModel::removeItem(const QString &id)
+{
+    for (int row = 0; row < m_items.size(); ++row) {
+        if (m_items.at(row).id == id || m_items.at(row).catalogId == id) {
+            beginRemoveRows({}, row, row);
+            m_items.removeAt(row);
+            endRemoveRows();
+            Q_EMIT countChanged();
+            return;
+        }
+    }
+}
+
 void MediaModel::clear()
 {
     replaceItems({});

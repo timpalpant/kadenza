@@ -148,9 +148,12 @@ QList<MediaItem> LibraryCache::items(const QString &kind, Sort sort, int limit, 
 
     // Apple returns ISO-8601 UTC timestamps, so a lexicographic sort is also a
     // chronological one. Items without a date sort last rather than first.
+    // LibraryOrder is alphabetical because Apple's library collections are
+    // ordered by title; a freshly inserted local row (position 0) must not
+    // jump to the front ahead of the sorted rows around it.
     const QString order = sort == DateAddedDesc ? QStringLiteral("ORDER BY (date_added = '') ASC, date_added DESC, "
                                                                  "title COLLATE NOCASE ASC")
-                                                : QStringLiteral("ORDER BY position ASC");
+                                                : QStringLiteral("ORDER BY title COLLATE NOCASE ASC, position ASC");
 
     QSqlQuery query(Database::instance().db());
     query.prepare(QStringLiteral("SELECT %1 FROM library_items WHERE kind = ? %2 "
@@ -232,6 +235,42 @@ void LibraryCache::setInLibrary(const QString &id, bool inLibrary)
     query.prepare(QStringLiteral("UPDATE library_items SET in_library = ? "
                                  "WHERE id = ? OR catalog_id = ?"));
     query.addBindValue(inLibrary);
+    query.addBindValue(id);
+    query.addBindValue(id);
+    query.exec();
+}
+
+void LibraryCache::insertRow(const QString &kind, const MediaItem &item)
+{
+    if (!available() || kind.isEmpty() || item.id.isEmpty())
+        return;
+
+    // A fresh epoch keeps this row ahead of any in-flight sync's finish pruning
+    // (which drops rows with a lower epoch), and lets a later real walk — with a
+    // yet-newer epoch — replace it as the source of truth.
+    const qint64 epoch = beginSync(kind);
+
+    // Collapse any pre-existing row for the same catalog resource so a local
+    // add cannot leave two rows for one album or track in the same kind.
+    if (!item.catalogId.isEmpty()) {
+        QSqlQuery removeQuery(Database::instance().db());
+        removeQuery.prepare(QStringLiteral("DELETE FROM library_items WHERE kind = ? AND catalog_id = ? AND id <> ?"));
+        removeQuery.addBindValue(kind);
+        removeQuery.addBindValue(item.catalogId);
+        removeQuery.addBindValue(item.id);
+        removeQuery.exec();
+    }
+
+    upsert(kind, {item}, epoch, 0);
+}
+
+void LibraryCache::removeRow(const QString &kind, const QString &id)
+{
+    if (!available() || kind.isEmpty() || id.isEmpty())
+        return;
+    QSqlQuery query(Database::instance().db());
+    query.prepare(QStringLiteral("DELETE FROM library_items WHERE kind = ? AND (id = ? OR catalog_id = ?)"));
+    query.addBindValue(kind);
     query.addBindValue(id);
     query.addBindValue(id);
     query.exec();

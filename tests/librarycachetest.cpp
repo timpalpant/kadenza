@@ -49,6 +49,10 @@ private slots:
     void storesAndUpdatesRatings();
     void appliesABatchOfRatingsInOneTransaction();
     void reportsStalenessBeforeFirstSync();
+    void insertsARowLocallyAndALaterSyncReconcilesIt();
+    void localInsertCoversAnExistingRowForTheSameCatalogResource();
+    void libraryOrderSortsNewlyInsertedRowsAlphabetically();
+    void removesARowByIdAndByCatalogId();
     void cleanupTestCase();
 
 private:
@@ -203,13 +207,20 @@ void LibraryCacheTest::appliesABatchOfRatingsInOneTransaction()
     m_cache.finishSync(kAlbums, epoch);
 
     // Mixed keys: the first row is addressed by its catalog id, the second by
-    // its library id, and the third is left alone.
+    // its library id, and the third is left alone. Look rows up by id so the
+    // assertion is independent of the view's ordering.
     m_cache.setRatings({{QStringLiteral("cat-1"), 1}, {QStringLiteral("2"), -1}});
 
     const auto items = m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10);
-    QCOMPARE(items.at(0).rating, 1);
-    QCOMPARE(items.at(1).rating, -1);
-    QCOMPARE(items.at(2).rating, 0);
+    const auto ratingOf = [&items](const QString &id) {
+        for (const auto &item : items)
+            if (item.id == id)
+                return item.rating;
+        return 0;
+    };
+    QCOMPARE(ratingOf(QStringLiteral("1")), 1);
+    QCOMPARE(ratingOf(QStringLiteral("2")), -1);
+    QCOMPARE(ratingOf(QStringLiteral("3")), 0);
 }
 
 void LibraryCacheTest::reportsStalenessBeforeFirstSync()
@@ -219,6 +230,62 @@ void LibraryCacheTest::reportsStalenessBeforeFirstSync()
     m_cache.upsert(kAlbums, {makeItem("1", "One", "2026-01-01T00:00:00Z")}, epoch, 0);
     m_cache.finishSync(kAlbums, epoch);
     QVERIFY(!m_cache.isStale(kAlbums, 3600));
+}
+
+void LibraryCacheTest::insertsARowLocallyAndALaterSyncReconcilesIt()
+{
+    // A locally inserted row is immediately visible.
+    m_cache.insertRow(kAlbums, makeItem("local", "Fresh", "2026-07-01T00:00:00Z", "cat-fresh"));
+    m_cache.insertRow(kAlbums, makeItem("1", "One", "2026-01-01T00:00:00Z", "cat-one"));
+    QCOMPARE(m_cache.count(kAlbums), 2);
+
+    // A later full walk is the source of truth: it replaces the stale "One"
+    // and its own finish prunes the locally inserted "Fresh" (which no longer
+    // comes from Apple), leaving exactly the rows the server currently serves.
+    const qint64 epoch = m_cache.beginSync(kAlbums);
+    m_cache.upsert(kAlbums, {makeItem("2", "Two", "2026-03-01T00:00:00Z", "cat-two")}, epoch, 0);
+    m_cache.finishSync(kAlbums, epoch);
+
+    QCOMPARE(m_cache.count(kAlbums), 1);
+    QCOMPARE(titlesOf(m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10)), QStringList({"Two"}));
+}
+
+void LibraryCacheTest::localInsertCoversAnExistingRowForTheSameCatalogResource()
+{
+    const qint64 epoch = m_cache.beginSync(kAlbums);
+    // A stale row for a catalog resource already exists, keyed by a different
+    // library id (as happens when Apple re-keys an item on re-add).
+    m_cache.upsert(kAlbums, {makeItem("old-1", "Stale", "2025-01-01T00:00:00Z", "cat-x")}, epoch, 0);
+    m_cache.finishSync(kAlbums, epoch);
+
+    // A local add of the same catalog resource must collapse the stale row.
+    m_cache.insertRow(kAlbums, makeItem("new-1", "Current", "2026-06-01T00:00:00Z", "cat-x"));
+
+    QCOMPARE(m_cache.count(kAlbums), 1);
+    QCOMPARE(titlesOf(m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10)), QStringList({"Current"}));
+}
+
+void LibraryCacheTest::libraryOrderSortsNewlyInsertedRowsAlphabetically()
+{
+    const qint64 epoch = m_cache.beginSync(kAlbums);
+    m_cache.upsert(kAlbums, {makeItem("1", "Alpha", "2026-01-01T00:00:00Z"), makeItem("2", "Zulu", "2026-02-01T00:00:00Z")}, epoch, 0);
+    m_cache.finishSync(kAlbums, epoch);
+
+    // A local add is stored at position 0 but must still read back in title
+    // order, not jump to the front of the album view.
+    m_cache.insertRow(kAlbums, makeItem("3", "Mike", "2026-03-01T00:00:00Z"));
+
+    QCOMPARE(titlesOf(m_cache.items(kAlbums, LibraryCache::LibraryOrder, 10)), QStringList({"Alpha", "Mike", "Zulu"}));
+}
+
+void LibraryCacheTest::removesARowByIdAndByCatalogId()
+{
+    m_cache.insertRow(kAlbums, makeItem("l.1", "Album", "2026-01-01T00:00:00Z", "cat-1"));
+    QCOMPARE(m_cache.count(kAlbums), 1);
+
+    // Removal from the UI is addressed by the catalog id.
+    m_cache.removeRow(kAlbums, QStringLiteral("cat-1"));
+    QCOMPARE(m_cache.count(kAlbums), 0);
 }
 
 QTEST_GUILESS_MAIN(LibraryCacheTest)

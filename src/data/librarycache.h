@@ -19,7 +19,7 @@ class LibraryCache
 {
 public:
     enum Sort {
-        LibraryOrder,  ///< The order Apple returned, as the web player shows it.
+        LibraryOrder,  ///< Alphabetical by title, as Apple orders library collections.
         DateAddedDesc, ///< Newest first, for Recently Added.
     };
 
@@ -48,6 +48,13 @@ public:
     /// waiting for the next sync.
     void setFavorite(const QString &id, bool favorite);
     void setInLibrary(const QString &id, bool inLibrary);
+    /// Inserts a single cached row for a resource just added to the library,
+    /// under a fresh epoch so a later real walk replaces it cleanly. The
+    /// LibraryOrder view sorts by title, so the row lands in alphabetical
+    /// place regardless of the stored position.
+    void insertRow(const QString &kind, const MediaItem &item);
+    /// Removes the row(s) for `kind` matching `id` by library or catalog id.
+    void removeRow(const QString &kind, const QString &id);
     void setRating(const QString &id, int rating);
     /// Writes a whole ratings reply in one transaction. Apple returns up to a
     /// hundred ratings at a time, and a commit per row means a commit — and an

@@ -266,7 +266,18 @@ private:
     /// Applies a whole ratings reply: one pass per model, one transaction.
     void applyRatings(const QHash<QString, int> &byId);
     /// Applies a confirmed favorite or library add/remove to every model and the cache.
-    void applyLibraryWrite(const QString &id, bool enabled, bool isFavorite);
+    /// For a library add, `type` is the resource kind (albums, songs, ...) and
+    /// `document` is the add response used to build the new row, so the change
+    /// shows up in Albums / Recently Added immediately without a full re-walk.
+    void applyLibraryWrite(const QString &id, bool enabled, bool isFavorite, const QString &type = {}, const QJsonDocument &document = {});
+    /// For a confirmed library add/remove, mirrors it into the cache and the
+    /// live library models (its own kind plus Recently Added) so the change
+    /// appears immediately without re-walking the whole library.
+    void applyLibraryChange(const QString &id, const QString &type, bool inLibrary, const QJsonDocument &addDocument);
+    /// Finds the shelf row (from any live shelf model or the player queue)
+    /// whose id or catalogId matches `id`, used to seed a new library row when
+    /// the add response has no usable attributes.
+    MediaItem findShelfRowFor(const QString &id);
     void refreshCachedModels(const QString &cacheKind);
     void requestModel(const QString &tag, const QString &path, MediaModel *model, bool append = false);
     void handleSuccess(const QString &tag, const QJsonDocument &document);

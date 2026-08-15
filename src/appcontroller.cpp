@@ -6,6 +6,7 @@
 #include <KConfigGroup>
 #include <KSharedConfig>
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QUrlQuery>
@@ -150,6 +151,13 @@ AppController::AppController(QObject *parent)
     });
     connect(&m_player, &PlayerController::authenticatedChanged, this, &AppController::authenticatedChanged);
     connect(&m_player, &PlayerController::errorChanged, this, &AppController::errorChanged);
+    connect(
+        &m_player, &PlayerController::libraryRemovalFinished, this, [this](const QString &type, const QString &id, bool ok, const QString &message) {
+            if (ok)
+                applyLibraryWrite(id, false, false, type);
+            else
+                setError(message.isEmpty() ? tr("Apple Music rejected that change.") : message);
+        });
     connect(&m_api, &ApiClient::succeeded, this, &AppController::handleSuccess);
     connect(&m_api, &ApiClient::failed, this, &AppController::handleFailure);
     connect(&m_api, &ApiClient::succeededRaw, this, [this](const QString &tag, const QByteArray &body) {
@@ -913,7 +921,11 @@ void AppController::refreshCachedModels(const QString &cacheKind)
         return;
     // Keep however much the user had already scrolled into view.
     const int wanted = qMax(kCachePageSize, model->rowCount());
-    model->replaceItems(m_cache.items(cacheKind, sortFor(cacheKind), wanted));
+    const auto items = m_cache.items(cacheKind, sortFor(cacheKind), wanted);
+    if (qEnvironmentVariableIsSet("KADENZA_TRACE") && !items.isEmpty())
+        qInfo().noquote() << "kadenza: refreshed cache" << cacheKind << "count=" << items.size()
+                          << "first.id=" << items.first().id << "first.type=" << items.first().type;
+    model->replaceItems(items);
 }
 
 void AppController::search(const QString &term)
@@ -1276,6 +1288,9 @@ void AppController::openDetail(
     }
 
     const QString path = collectionPath(id, catalogId, type);
+    if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
+        qInfo().noquote() << "kadenza: openDetail id=" << id << "catalogId=" << catalogId
+                          << "type=" << type << "title=" << title << "-> path=" << path;
     if (path.isEmpty())
         return;
     if (artist && path.contains(QStringLiteral("views=")))
@@ -1391,15 +1406,22 @@ void AppController::setInLibrary(const QString &id, const QString &type, bool in
     resource.remove(QStringLiteral("library-"));
     if (resource.isEmpty())
         resource = QStringLiteral("songs");
-    if (inLibrary)
-        m_api.post(kLibraryAddTagPrefix + id, QStringLiteral("/v1/me/library?ids[%1]=%2").arg(resource, id));
-    else
-        m_api.del(kLibraryRemoveTagPrefix + id, QStringLiteral("/v1/me/library/%1/%2").arg(resource, id));
+    if (inLibrary) {
+        m_api.post(kLibraryAddTagPrefix + resource + QLatin1Char(':') + id, QStringLiteral("/v1/me/library?ids[%1]=%2").arg(resource, id));
+    } else if (m_player.available()) {
+        // Apple's public API rejects library removals for MusicKit user tokens
+        // ("Host requires authentication"), so they are sent through the
+        // sidecar's web-player context instead, where the web player performs
+        // the same DELETE itself.
+        m_player.removeFromLibrary(resource, id);
+    } else {
+        setError(tr("Apple Music requires the playback helper to remove items from your library."));
+    }
 }
 
 // One place for the state update that a favorite or library write confirms,
 // shared by both kinds since only the model method and message text differ.
-void AppController::applyLibraryWrite(const QString &id, bool enabled, bool isFavorite)
+void AppController::applyLibraryWrite(const QString &id, bool enabled, bool isFavorite, const QString &type, const QJsonDocument &document)
 {
     auto models = allModels();
     models.append(m_player.queueModel());
@@ -1412,9 +1434,181 @@ void AppController::applyLibraryWrite(const QString &id, bool enabled, bool isFa
     if (isFavorite)
         m_cache.setFavorite(id, enabled);
     else
-        m_cache.setInLibrary(id, enabled);
+        applyLibraryChange(id, type, enabled, document);
     setMessage(isFavorite ? (enabled ? tr("Added to Favorites") : tr("Removed from Favorites"))
                           : (enabled ? tr("Added to Library") : tr("Removed from Library")));
+}
+
+// A confirmed library add or remove is mirrored into the cache and the live
+// library models (its own kind plus Recently Added) so the change appears
+// immediately, without re-walking the whole library. On an add the new row is
+// built from the add response (authoritative: real library id, dateAdded,
+// catalog details), falling back to the shelf row the item was clicked on,
+// and finally to a minimal row keyed by its id.
+//
+// Note: applyLibraryWrite already flipped in_library on every live model that
+// already knew the row. This helper only needs to insert or remove the row in
+// the two library views (its own kind + Recently Added); a flag flip on an
+// already-present row has no visible effect beyond what the loop did.
+void AppController::applyLibraryChange(const QString &id, const QString &type, bool inLibrary, const QJsonDocument &addDocument)
+{
+    if (id.isEmpty())
+        return;
+
+    const QString kind = type.isEmpty() ? QStringLiteral("albums") : type;
+    const QString recentlyAdded = QStringLiteral("recently-added");
+
+    if (inLibrary) {
+        // Seed from the add response when available: it carries the library
+        // `id` (i.*) and `catalogId`, which Apple needs for later removes and
+        // catalog lookups. Its attributes are otherwise a stub (no title, no
+        // artwork, no dateAdded), so overlay the shelf row the user clicked
+        // for display fields.
+        MediaItem item;
+        const auto data = addDocument.object().value(QStringLiteral("data")).toArray();
+        for (const auto &value : data) {
+            const auto candidate = MediaItem::fromJson(value.toObject());
+            if (!candidate.id.isEmpty() && (candidate.id == id || candidate.catalogId == id)) {
+                item = candidate;
+                break;
+            }
+        }
+        // Apple omits the catalogId from an add response for albums and
+        // artists (only songs carry it in playParams), so the loop above never
+        // matches them. A single-element reply is the resource that was just
+        // added, since a POST always targets exactly one id.
+        if (item.id.isEmpty() && data.size() == 1)
+            item = MediaItem::fromJson(data.first().toObject());
+        const MediaItem shelf = (item.title.isEmpty() || item.artworkUrl.isEmpty()) ? findShelfRowFor(id) : MediaItem{};
+        if (!shelf.id.isEmpty()) {
+            if (item.id.isEmpty())
+                item.id = shelf.id;
+            if (item.catalogId.isEmpty())
+                item.catalogId = shelf.catalogId;
+            if (item.title.isEmpty())
+                item.title = shelf.title;
+            if (item.subtitle.isEmpty())
+                item.subtitle = shelf.subtitle;
+            if (item.album.isEmpty())
+                item.album = shelf.album;
+            if (item.artworkUrl.isEmpty())
+                item.artworkUrl = shelf.artworkUrl;
+            if (item.dateAdded.isEmpty())
+                item.dateAdded = shelf.dateAdded;
+            if (item.artistId.isEmpty())
+                item.artistId = shelf.artistId;
+            if (item.albumId.isEmpty())
+                item.albumId = shelf.albumId;
+        }
+        if (item.id.isEmpty()) {
+            // No response, no shelf row: synthesize a minimal row.
+            item.id = id;
+            if (id.at(0) != QLatin1Char('i'))
+                item.catalogId = id;
+        }
+        // The shelf overlay can provide id/catalogId/title without a type
+        // (shelf rows carry their own catalog type, not the library one), and
+        // the synthesized branch above only runs when the id was missing — so
+        // set the library type unconditionally, or the row opens no detail
+        // page at all.
+        if (item.type.isEmpty())
+            item.type = QStringLiteral("library-") + kind;
+        // Adding from the detail page: the item is not in any shelf model, so
+        // the shelf lookup finds nothing, but the page being shown holds its
+        // display fields. Without them the row would sort to the top of the
+        // alphabetical library views.
+        if (m_detailCatalogId == id || m_detailId == id) {
+            if (item.title.isEmpty())
+                item.title = m_detailTitle;
+            if (item.subtitle.isEmpty())
+                item.subtitle = m_detailSubtitle;
+            if (item.artworkUrl.isEmpty())
+                item.artworkUrl = m_detailArtwork;
+        }
+        // The add was addressed by the catalog id; whatever it is, it is the
+        // catalog id of the row unless it is a library id to begin with.
+        if (item.catalogId.isEmpty() && id.at(0) != QLatin1Char('i'))
+            item.catalogId = id;
+        if (item.dateAdded.isEmpty())
+            item.dateAdded = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+        item.inLibrary = true;
+
+        for (const QString &k : {kind, recentlyAdded})
+            m_cache.insertRow(k, item);
+        for (MediaModel *model : {modelForKind(kind), &m_recentlyAdded}) {
+            if (!model)
+                continue;
+            const bool known = model->indexOfId(id) >= 0;
+            if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
+                qInfo().noquote() << "kadenza: library model" << (model == &m_recentlyAdded ? "recently-added" : kind)
+                                  << "known=" << known;
+            if (known)
+                continue;
+            // The kind view sorts alphabetically, Recently Added newest-first.
+            if (model == &m_recentlyAdded)
+                model->insertAtFront(item);
+            else
+                model->insertAlphabetically(item);
+        }
+        // A detail page opened from the catalog still holds the catalog id.
+        // Removing a just-added item must target the library id the add
+        // returned, not the catalog id.
+        if (!item.id.isEmpty() && (m_detailId == id || m_detailCatalogId == id)) {
+            m_detailId = item.id;
+            Q_EMIT detailLibraryChanged();
+        }
+        if (qEnvironmentVariableIsSet("KADENZA_TRACE")) {
+            qInfo().noquote() << "kadenza: applied library add id=" << id << "row.id=" << item.id
+                              << "row.catalogId=" << item.catalogId << "row.type=" << item.type
+                              << "row.title=" << item.title;
+            qInfo().noquote() << "kadenza: add response data.size=" << data.size()
+                              << QJsonDocument(addDocument.object()).toJson(QJsonDocument::Compact).left(400);
+        }
+    } else {
+        for (const QString &k : {kind, recentlyAdded})
+            m_cache.removeRow(k, id);
+        for (MediaModel *model : {modelForKind(kind), &m_recentlyAdded})
+            if (model)
+                model->removeItem(id);
+    }
+}
+
+/// Finds the shelf row (from any live shelf model or the player queue) whose
+/// id or catalogId matches `id`, used to seed a new library row when the add
+/// response has no usable attributes.
+MediaItem AppController::findShelfRowFor(const QString &id)
+{
+    if (id.isEmpty())
+        return {};
+
+    // allModels covers the library views and the player queue; a few other
+    // shelf models the user can click "Add to Library" from are not in
+    // allModels (recommendations, charts, artist shelves, replay, detail).
+    QList<MediaModel *> candidates = allModels();
+    candidates.append(m_player.queueModel());
+    for (MediaModel *model : {&m_chartAlbums,
+                              &m_chartSongs,
+                              &m_chartPlaylists,
+                              &m_artistAlbums,
+                              &m_artistSingles,
+                              &m_artistSimilar,
+                              &m_artistLatest,
+                              &m_artistTopSongs,
+                              &m_replayTopAlbums,
+                              &m_replayTopSongs,
+                              &m_replayTopArtists})
+        candidates.append(model);
+    for (auto *model : m_recommendationModels)
+        candidates.append(model);
+
+    for (auto *model : candidates) {
+        if (!model)
+            continue;
+        const int row = model->indexOfId(id);
+        if (row >= 0)
+            return *model->itemAt(row);
+    }
+    return {};
 }
 
 void AppController::createPlaylist(const QString &name)
@@ -1542,7 +1736,12 @@ void AppController::handleSuccess(const QString &tag, const QJsonDocument &docum
     }
     if (tag.startsWith(kLibraryAddTagPrefix) || tag.startsWith(kLibraryRemoveTagPrefix)) {
         const bool enabled = tag.startsWith(kLibraryAddTagPrefix);
-        applyLibraryWrite(tag.mid((enabled ? kLibraryAddTagPrefix : kLibraryRemoveTagPrefix).size()), enabled, false);
+        const QString tail = tag.mid((enabled ? kLibraryAddTagPrefix : kLibraryRemoveTagPrefix).size());
+        // `resource:id` — the resource kind is what the cache row is stored under.
+        const int colon = tail.indexOf(QLatin1Char(':'));
+        const QString type = colon >= 0 ? tail.left(colon) : QString();
+        const QString id = colon >= 0 ? tail.mid(colon + 1) : tail;
+        applyLibraryWrite(id, enabled, false, type, enabled ? document : QJsonDocument());
         return;
     }
     if (tag == QStringLiteral("lookup")) {
@@ -1741,6 +1940,8 @@ void AppController::handleFailure(const QString &tag, int status, const QString 
     auto *model = m_pendingModels.take(tag);
     m_appendRequests.remove(tag);
     const QString text = tr("Apple Music request failed (%1): %2").arg(status).arg(message);
+    if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
+        qInfo().noquote() << "kadenza: request failed tag=" << tag << "status=" << status << "message=" << message;
     if (model) {
         model->setLoading(false);
         model->setError(text);

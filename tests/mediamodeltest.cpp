@@ -19,6 +19,7 @@ private slots:
     void parsesRelationshipsAndFlags();
     void updatesLibraryStatus();
     void appliesRatingsByLibraryAndCatalogId();
+    void insertsAlphabeticallyByTitle();
 };
 
 static QJsonObject song(const QString &id, const QString &catalogId)
@@ -144,6 +145,28 @@ void MediaModelTest::appliesRatingsByLibraryAndCatalogId()
     changed.clear();
     model.setRatings({{QStringLiteral("cat-1"), 1}, {QStringLiteral("i.2"), -1}});
     QCOMPARE(changed.count(), 0);
+}
+
+void MediaModelTest::insertsAlphabeticallyByTitle()
+{
+    const auto item = [](const QString &id, const QString &title) {
+        MediaItem media;
+        media.id = id;
+        media.catalogId = id;
+        media.type = QStringLiteral("library-songs");
+        media.title = title;
+        return media;
+    };
+    MediaModel model;
+    model.replaceItems({item(QStringLiteral("i.1"), QStringLiteral("Alpha")), item(QStringLiteral("i.2"), QStringLiteral("Zulu"))});
+
+    model.insertAlphabetically(item(QStringLiteral("i.3"), QStringLiteral("Mike")));
+    model.insertAlphabetically(item(QStringLiteral("i.4"), QStringLiteral("alpha")));
+
+    QCOMPARE(model.get(0).value(QStringLiteral("title")).toString(), QStringLiteral("Alpha"));
+    QCOMPARE(model.get(1).value(QStringLiteral("title")).toString(), QStringLiteral("alpha"));
+    QCOMPARE(model.get(2).value(QStringLiteral("title")).toString(), QStringLiteral("Mike"));
+    QCOMPARE(model.get(3).value(QStringLiteral("title")).toString(), QStringLiteral("Zulu"));
 }
 
 QTEST_GUILESS_MAIN(MediaModelTest)

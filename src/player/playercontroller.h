@@ -94,6 +94,9 @@ public:
     Q_INVOKABLE void requestLyrics();
     Q_INVOKABLE void clearError();
     Q_INVOKABLE void restartSidecar();
+    /// Removes an item from the library through the sidecar's web-player
+    /// context, which is the only channel Apple accepts removals on.
+    void removeFromLibrary(const QString &type, const QString &id);
 
 signals:
     void tokensChanged(const QString &developerToken, const QString &userToken, const QString &storefront);
@@ -111,6 +114,9 @@ signals:
     void queuePositionChanged();
     void lyricsChanged();
     void previewDetectedChanged();
+    /// Result of a removeFromLibrary() request. `ok` is false with `message`
+    /// when Apple rejected the removal.
+    void libraryRemovalFinished(const QString &type, const QString &id, bool ok, const QString &message);
 
 private:
     void send(const QJsonObject &command);
@@ -155,6 +161,10 @@ private:
     qint64 m_savedPositionMs = 0;
     bool m_restorePending = false;
     bool m_shuttingDown = false;
+    // The type and id of an in-flight removeFromLibrary() request, so its
+    // cmd-done or error event can be matched back to the request.
+    QString m_pendingLibraryRemoveType;
+    QString m_pendingLibraryRemoveId;
     // Set whenever a persisted value actually changes, so an idle or paused
     // Kadenza stops rewriting an identical config file every few seconds.
     bool m_stateDirty = false;

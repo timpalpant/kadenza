@@ -116,10 +116,16 @@ PlayerController::~PlayerController()
 QString PlayerController::locateSidecar() const
 {
     const QString override = qEnvironmentVariable("KADENZA_SIDECAR");
+    // The sidecar that ships with this build's source tree bundles its own
+    // Electron, so it is preferred over a system-installed copy, which may
+    // predate the build and is what "run what you just built" expects. The
+    // installed location stays as a fallback for packaged binaries, where
+    // KADENZA_SOURCE_SIDECAR points at a build machine's path that does not
+    // exist here.
     const QStringList candidates = {
         override,
-        QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("kadenza/sidecar"), QStandardPaths::LocateDirectory),
         QString::fromUtf8(KADENZA_SOURCE_SIDECAR),
+        QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("kadenza/sidecar"), QStandardPaths::LocateDirectory),
     };
     for (const auto &candidate : candidates) {
         if (!candidate.isEmpty() && QFileInfo::exists(candidate + QStringLiteral("/main.js")))
@@ -417,7 +423,21 @@ void PlayerController::handleEvent(const QJsonObject &object)
         m_queue.clear();
         Q_EMIT authenticatedChanged();
         Q_EMIT tokensChanged({}, {}, QStringLiteral("us"));
-    } else if (event == QStringLiteral("hook-failed") || event == QStringLiteral("error")) {
+    } else if (event == QStringLiteral("cmd-done")) {
+        if (object.value(QStringLiteral("cmd")).toString() == QStringLiteral("removeFromLibrary")) {
+            Q_EMIT libraryRemovalFinished(m_pendingLibraryRemoveType, m_pendingLibraryRemoveId, true, {});
+            return;
+        }
+    } else if (event == QStringLiteral("error")) {
+        if (object.value(QStringLiteral("code")).toString() == QStringLiteral("command-removeFromLibrary")) {
+            Q_EMIT libraryRemovalFinished(m_pendingLibraryRemoveType,
+                                          m_pendingLibraryRemoveId,
+                                          false,
+                                          object.value(QStringLiteral("detail")).toString(tr("Apple Music rejected the removal.")));
+            return;
+        }
+        setError(object.value(QStringLiteral("detail")).toString(tr("Apple Music playback failed.")));
+    } else if (event == QStringLiteral("hook-failed")) {
         setError(object.value(QStringLiteral("detail")).toString(tr("Apple Music playback failed.")));
     }
 }
@@ -659,6 +679,15 @@ void PlayerController::restartSidecar()
     setError({});
     if (m_process.state() == QProcess::NotRunning)
         start();
+}
+
+void PlayerController::removeFromLibrary(const QString &type, const QString &id)
+{
+    if (type.isEmpty() || id.isEmpty())
+        return;
+    m_pendingLibraryRemoveType = type;
+    m_pendingLibraryRemoveId = id;
+    send({{QStringLiteral("cmd"), QStringLiteral("removeFromLibrary")}, {QStringLiteral("type"), type}, {QStringLiteral("id"), id}});
 }
 
 void PlayerController::restorePlayerState()

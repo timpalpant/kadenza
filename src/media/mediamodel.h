@@ -55,6 +55,11 @@ public:
     void append(const QJsonArray &data, const QString &next = {});
     void replaceItems(QList<MediaItem> items);
     void appendItems(const QList<MediaItem> &items);
+    void insertAtFront(const MediaItem &item);
+    /// Inserts `item` in title order (case-insensitive), matching how the
+    /// library views sort their rows.
+    void insertAlphabetically(const MediaItem &item);
+    void removeItem(const QString &id);
     void clear();
     [[nodiscard]] const MediaItem *itemAt(int row) const;
     void setFavorite(const QString &id, bool favorite);

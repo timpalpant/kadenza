@@ -375,6 +375,38 @@ const commands = {
     pushTokens()
   },
   refreshTokens: () => pushTokens(),
+  // Apple's public Music API (api.music.apple.com) rejects DELETE library
+  // requests made with a MusicKit user token ("Host requires authentication").
+  // The web player's own host serves the same library endpoint to the same
+  // account, so the removal is performed from this page's context instead.
+  async removeFromLibrary({ type, id }) {
+    if (!type || !id) throw new Error('removeFromLibrary needs a type and an id')
+    await ensureAuthorized()
+    const tokens = readTokens()
+    if (!tokens || !tokens.musicUserToken) throw new Error('No Apple Music authorization')
+    const response = await fetch(
+      `https://amp-api.music.apple.com/v1/me/library/${encodeURIComponent(type)}/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${tokens.developerToken}`,
+          'Music-User-Token': tokens.musicUserToken,
+          'Content-Type': 'application/json',
+          Origin: 'https://music.apple.com',
+        },
+      },
+    )
+    if (!response.ok) {
+      let detail = `Apple Music rejected the removal (HTTP ${response.status})`
+      try {
+        const body = await response.json()
+        const error = body && body.errors && body.errors[0]
+        if (error && error.detail) detail = String(error.detail)
+        else if (error && error.title) detail = String(error.title)
+      } catch { /* keep the status-based message */ }
+      throw new Error(detail)
+    }
+  },
 }
 
 ipcRenderer.on('kadenza:command', async (_event, message) => {
