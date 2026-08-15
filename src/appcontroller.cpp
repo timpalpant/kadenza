@@ -923,8 +923,8 @@ void AppController::refreshCachedModels(const QString &cacheKind)
     const int wanted = qMax(kCachePageSize, model->rowCount());
     const auto items = m_cache.items(cacheKind, sortFor(cacheKind), wanted);
     if (qEnvironmentVariableIsSet("KADENZA_TRACE") && !items.isEmpty())
-        qInfo().noquote() << "kadenza: refreshed cache" << cacheKind << "count=" << items.size()
-                          << "first.id=" << items.first().id << "first.type=" << items.first().type;
+        qInfo().noquote() << "kadenza: refreshed cache" << cacheKind << "count=" << items.size() << "first.id=" << items.first().id
+                          << "first.type=" << items.first().type;
     model->replaceItems(items);
 }
 
@@ -1289,8 +1289,8 @@ void AppController::openDetail(
 
     const QString path = collectionPath(id, catalogId, type);
     if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
-        qInfo().noquote() << "kadenza: openDetail id=" << id << "catalogId=" << catalogId
-                          << "type=" << type << "title=" << title << "-> path=" << path;
+        qInfo().noquote() << "kadenza: openDetail id=" << id << "catalogId=" << catalogId << "type=" << type << "title=" << title
+                          << "-> path=" << path;
     if (path.isEmpty())
         return;
     if (artist && path.contains(QStringLiteral("views=")))
@@ -1540,8 +1540,7 @@ void AppController::applyLibraryChange(const QString &id, const QString &type, b
                 continue;
             const bool known = model->indexOfId(id) >= 0;
             if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
-                qInfo().noquote() << "kadenza: library model" << (model == &m_recentlyAdded ? "recently-added" : kind)
-                                  << "known=" << known;
+                qInfo().noquote() << "kadenza: library model" << (model == &m_recentlyAdded ? "recently-added" : kind) << "known=" << known;
             if (known)
                 continue;
             // The kind view sorts alphabetically, Recently Added newest-first.
@@ -1558,9 +1557,8 @@ void AppController::applyLibraryChange(const QString &id, const QString &type, b
             Q_EMIT detailLibraryChanged();
         }
         if (qEnvironmentVariableIsSet("KADENZA_TRACE")) {
-            qInfo().noquote() << "kadenza: applied library add id=" << id << "row.id=" << item.id
-                              << "row.catalogId=" << item.catalogId << "row.type=" << item.type
-                              << "row.title=" << item.title;
+            qInfo().noquote() << "kadenza: applied library add id=" << id << "row.id=" << item.id << "row.catalogId=" << item.catalogId
+                              << "row.type=" << item.type << "row.title=" << item.title;
             qInfo().noquote() << "kadenza: add response data.size=" << data.size()
                               << QJsonDocument(addDocument.object()).toJson(QJsonDocument::Compact).left(400);
         }
