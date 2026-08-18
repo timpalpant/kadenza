@@ -32,8 +32,8 @@ license=('GPL-3.0-or-later')
 # installing the .deb equivalent of this package in a bare container with
 # nothing pre-satisfied by a desktop environment.
 depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig'
-         'knotifications' 'kglobalaccel' 'glibc' 'qqc2-desktop-style' 'gtk3'
-         'nss')
+         'knotifications' 'kglobalaccel' 'kdbusaddons' 'glibc' 'qqc2-desktop-style'
+         'gtk3' 'nss')
 makedepends=('cmake' 'ninja' 'git' 'nodejs' 'npm')
 provides=("$_pkgname=$pkgver")
 conflicts=("$_pkgname")

@@ -151,7 +151,7 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "sound")
 # gap because qt6-svg is already a dependency of kirigami there, but Debian
 # does not pull it in transitively the same way.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "qml6-module-qtcore, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-org-kde-kirigami, qml6-module-org-kde-desktop, qt6-svg-plugins, libqt6sql6-sqlite, libkf6notifications6, libkf6globalaccel6")
+    "qml6-module-qtcore, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-layouts, qml6-module-org-kde-kirigami, qml6-module-org-kde-desktop, qt6-svg-plugins, libqt6sql6-sqlite, libkf6notifications6, libkf6globalaccel6, libkf6dbusaddons6")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_RPM_PACKAGE_LICENSE "GPL-3.0-or-later")
@@ -166,6 +166,6 @@ set(CPACK_RPM_PACKAGE_GROUP "Applications/Multimedia")
 # qt6-qtsvg is the SVG imageformats plugin the demo library's placeholder
 # artwork (data/demo/*.svg) needs to decode at all; see the matching note
 # above CPACK_DEBIAN_PACKAGE_DEPENDS.
-set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtdeclarative, kf6-kirigami, kf6-knotifications, kf6-kglobalaccel, kf6-qqc2-desktop-style, qt6-qtsvg")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtdeclarative, kf6-kirigami, kf6-knotifications, kf6-kglobalaccel, kf6-kdbusaddons, kf6-qqc2-desktop-style, qt6-qtsvg")
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 include(CPack)

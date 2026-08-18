@@ -19,7 +19,7 @@ jobs:
             base-devel cmake ninja git \
             qt6-base qt6-declarative qt6-tools \
             kirigami ki18n kconfig kcoreaddons \
-            knotifications kglobalaccel appstream
+            knotifications kglobalaccel kdbusaddons appstream
 
       - uses: actions/checkout@v7
 
@@ -72,7 +72,7 @@ jobs:
             base-devel cmake ninja git pacman-contrib sudo nodejs npm \
             qt6-base qt6-declarative qt6-tools \
             kirigami ki18n kconfig kcoreaddons \
-            knotifications kglobalaccel
+            knotifications kglobalaccel kdbusaddons
 
       - uses: actions/checkout@v7
 
@@ -126,7 +126,7 @@ jobs:
             ca-certificates cmake ninja-build g++ git dpkg-dev file \
             qt6-base-dev qt6-declarative-dev qt6-tools-dev \
             libkf6coreaddons-dev libkf6i18n-dev libkf6config-dev \
-            libkf6notifications-dev libkf6globalaccel-dev libkirigami-dev \
+            libkf6notifications-dev libkf6globalaccel-dev libkf6dbusaddons-dev libkirigami-dev \
             libgtk-3-0t64 libnss3 libasound2t64
 
       - uses: actions/checkout@v7
@@ -197,7 +197,7 @@ jobs:
             cmake ninja-build gcc-c++ git rpm-build cpio \
             qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
             kf6-kcoreaddons-devel kf6-ki18n-devel kf6-kconfig-devel \
-            kf6-knotifications-devel kf6-kglobalaccel-devel \
+            kf6-knotifications-devel kf6-kglobalaccel-devel kf6-kdbusaddons-devel \
             kf6-kirigami-devel \
             gtk3 nss alsa-lib
           dnf clean all
