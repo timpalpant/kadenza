@@ -18,6 +18,7 @@ find_package(KF6Config ${KF_MIN_VERSION} REQUIRED)
 find_package(KF6Kirigami ${KF_MIN_VERSION} REQUIRED)
 find_package(KF6Notifications ${KF_MIN_VERSION} REQUIRED)
 find_package(KF6GlobalAccel ${KF_MIN_VERSION} REQUIRED)
+find_package(KF6DBusAddons ${KF_MIN_VERSION} REQUIRED)
 
 include(GNUInstallDirs)
 include(CTest)
@@ -100,7 +101,7 @@ target_link_libraries(kadenza PRIVATE
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2
     Qt6::Widgets Qt6::Network Qt6::DBus Qt6::Sql
     KF6::CoreAddons KF6::I18n KF6::I18nQml KF6::ConfigCore)
-target_link_libraries(kadenza PRIVATE KF6::Notifications KF6::GlobalAccel)
+target_link_libraries(kadenza PRIVATE KF6::Notifications KF6::GlobalAccel KF6::DBusAddons)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)

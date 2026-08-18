@@ -4,6 +4,7 @@
 #include "version.h"
 
 #include <KAboutData>
+#include <KDBusService>
 #include <KGlobalAccel>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
@@ -12,6 +13,8 @@
 #include <QAction>
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -41,6 +44,11 @@ int main(int argc, char *argv[])
                                 "Rincon, used under the GPL."));
     aboutData.setHomepage(QStringLiteral("https://github.com/timpalpant/kadenza"));
     aboutData.setBugAddress(QByteArrayLiteral("https://github.com/timpalpant/kadenza/issues"));
+    // KAboutData defaults this to kde.org, which would make setApplicationData()
+    // below register KDBusService's D-Bus name as org.kde.kadenza rather than
+    // KADENZA_APP_ID. Kadenza is not a KDE project, so it uses its own
+    // reverse-DNS namespace.
+    aboutData.setOrganizationDomain(QByteArrayLiteral("timpalpant.github.io"));
     aboutData.setDesktopFileName(QStringLiteral(KADENZA_APP_ID));
     // Only genuine runtime dependencies belong here. castLabs' Widevine-enabled
     // Electron is the runtime the sidecar executes on. Slipmat is not listed:
@@ -59,6 +67,19 @@ int main(int argc, char *argv[])
     aboutData.setupCommandLine(&parser);
     parser.process(app);
     aboutData.processCommandLine(&parser);
+
+    // A second launch should raise the existing window rather than spin up a
+    // competing sidecar process; the sidecar cannot tolerate more than one
+    // instance running at once. Without a session bus we still run, just
+    // without single-instance coordination.
+    KDBusService dbusService(KDBusService::Unique | KDBusService::NoExitOnFailure);
+    if (!dbusService.isRegistered()) {
+        const QDBusConnection sessionBus = QDBusConnection::sessionBus();
+        const auto *busInterface = sessionBus.interface();
+        const auto existingService = busInterface ? busInterface->isServiceRegistered(QStringLiteral(KADENZA_APP_ID)) : QDBusReply<bool>();
+        if (sessionBus.isConnected() && existingService.isValid() && existingService.value())
+            return 0;
+    }
 
     auto *controller = new AppController(&app);
     AppController::setInstance(controller);
@@ -84,6 +105,7 @@ int main(int argc, char *argv[])
         mainWindow->raise();
         mainWindow->requestActivate();
     };
+    QObject::connect(&dbusService, &KDBusService::activateRequested, &app, [showWindow](const QStringList &, const QString &) { showWindow(); });
 
     auto *showShortcut = new QAction(i18n("Show Kadenza"), &app);
     showShortcut->setObjectName(QStringLiteral("show-kadenza"));
