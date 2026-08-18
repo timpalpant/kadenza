@@ -42,6 +42,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.3" date="2026-08-18">
+      <description>
+        <p>A patch release with a reliability fix.</p>
+        <ul>
+          <li>Launching Kadenza while it is already running now raises the existing window instead of starting a second, conflicting instance</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-08-14">
       <description>
         <p>Fixes and polish across the library and search.</p>
