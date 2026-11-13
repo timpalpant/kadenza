@@ -42,6 +42,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.0" date="2026-11-13">
+      <description>
+        <p>Kadenza now runs on 64-bit ARM.</p>
+        <ul>
+          <li>Arch, Debian, RPM and Flatpak packages are published for aarch64/arm64 as well as x86_64</li>
+          <li>The bundled Widevine-enabled Electron runtime is upgraded from 43.0.0 to 45.2.1</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-08-18">
       <description>
         <p>A patch release with a reliability fix.</p>
