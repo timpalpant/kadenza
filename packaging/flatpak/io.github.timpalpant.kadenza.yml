@@ -31,8 +31,15 @@ modules:
         url: https://github.com/timpalpant/kadenza.git
         tag: v0.2.3
       - type: archive
+        only-arches: [x86_64]
         url: https://github.com/castlabs/electron-releases/releases/download/v45.2.1%2Bwvcus/electron-v45.2.1+wvcus-linux-x64.zip
         sha256: 18953cdab1cdc2499f9b0089f85d069559bf992145008a40aacd0d7714b97960
+        strip-components: 0
+        dest: electron-dist
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/castlabs/electron-releases/releases/download/v45.2.1%2Bwvcus/electron-v45.2.1+wvcus-linux-arm64.zip
+        sha256: 4eaa98ae93b98377f1fb3b8ab403a2132a301cd04f05322fcf4a90d29ac68ce1
         strip-components: 0
         dest: electron-dist
     build-commands:

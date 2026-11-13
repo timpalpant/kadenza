@@ -43,8 +43,8 @@ is shown only while Apple's own sign-in requires interaction.
 - Persistent Apple session in an isolated Electron profile
 - Adaptive single-pane Kirigami navigation for compact windows
 
-An active Apple Music subscription, network access, and an x86-64 Linux system
-are required for full playback. Widevine on Linux does not provide persistent
+An active Apple Music subscription, network access, and an x86-64 or arm64
+Linux system are required for full playback. Widevine on Linux does not provide persistent
 licenses, so offline playback is not available.
 
 ## Build

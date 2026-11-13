@@ -4,7 +4,7 @@ pkgname=kadenza
 pkgver=0.2.3
 pkgrel=1
 pkgdesc="Native Apple Music client for KDE Plasma"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://github.com/timpalpant/kadenza"
 license=('GPL-3.0-or-later')
 # Bundles a Widevine-enabled Electron build (MIT-licensed, from
