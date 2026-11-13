@@ -121,7 +121,12 @@ async function createWindow() {
           height: 720,
           title: 'Sign in to Apple Music — Kadenza',
           autoHideMenuBar: true,
-          webPreferences: { partition: PARTITION },
+          // Electron 45+ puts a window.open() child whose sandbox state
+          // differs from its opener's in a separate process with no opener.
+          // Child windows default to sandboxed and this window is not, so
+          // without this MusicKit's sign-in popup would lose window.opener
+          // and could never post the authorization back.
+          webPreferences: { partition: PARTITION, sandbox: false },
         },
       }
     }

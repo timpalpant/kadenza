@@ -10,7 +10,7 @@
     "debug": "KADENZA_SHOW_SIDECAR=1 electron ."
   },
   "devDependencies": {
-    "electron": "https://github.com/castlabs/electron-releases#v43.0.0+wvcus"
+    "electron": "https://github.com/castlabs/electron-releases#v45.2.1+wvcus"
   }
 }
 

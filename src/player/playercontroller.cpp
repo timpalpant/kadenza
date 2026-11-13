@@ -27,12 +27,12 @@ constexpr int kSidecarRestartBaseMs = 1000;
 // specific castlabs Electron+Widevine build, and a version drift here would
 // not fail loudly -- it would just run against whatever is on PATH.
 //
-// Deliberately NOT "electron43-castlab-bin" -- that is only the AUR package
+// Deliberately NOT "electron45-castlab-bin" -- that is only the AUR package
 // name (the "-bin" suffix is AUR's naming convention for a prebuilt-binary
 // package). The executable it actually installs to PATH is
-// "electron43-castlab" (confirmed via `pacman -Ql electron43-castlab-bin`),
-// matching its `Provides: electron43-castlab=...`.
-constexpr auto kSystemElectron = "electron43-castlab";
+// "electron45-castlab" (the AUR PKGBUILD installs /usr/bin/${pkgname%-bin}),
+// matching its `Provides: electron45-castlab=...`.
+constexpr auto kSystemElectron = "electron45-castlab";
 } // namespace
 
 PlayerController::PlayerController(QObject *parent)

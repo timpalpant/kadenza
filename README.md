@@ -65,8 +65,8 @@ overrides sidecar discovery.
 
 Kadenza looks for its Widevine-enabled Electron runtime in three places, in
 order: `KADENZA_ELECTRON=/path/to/electron`, the sidecar's own bundled copy
-(`npm --prefix sidecar install`, above), and `electron43-castlab` on `PATH`
-(the binary installed by the AUR package `electron43-castlab-bin`). Every
+(`npm --prefix sidecar install`, above), and `electron45-castlab` on `PATH`
+(the binary installed by the AUR package `electron45-castlab-bin`). Every
 released package -- Arch, .deb, .rpm and Flatpak -- bundles its own copy
 rather than depending on that AUR package: its launcher script has an
 upstream packaging bug (an unsubstituted template placeholder) that makes it
