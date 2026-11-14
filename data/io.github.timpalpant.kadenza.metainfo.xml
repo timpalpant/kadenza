@@ -42,6 +42,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.4.0" date="2026-11-14">
+      <description>
+        <p>Kadenza can now be driven from the sofa with a TV remote.</p>
+        <ul>
+          <li>A new TV mode, on automatically in Plasma Bigscreen, runs full screen with a layout sized for viewing across the room</li>
+          <li>Arrow keys move focus between tiles, rows, the sidebar and the player bar; OK opens or plays, holding OK opens the context menu, and Back steps out</li>
+          <li>TV mode can be switched on or off under Settings → Interface</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-11-13">
       <description>
         <p>Kadenza now runs on 64-bit ARM.</p>
