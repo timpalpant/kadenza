@@ -73,6 +73,12 @@ class AppController : public QObject
     Q_PROPERTY(int sidebarWidth READ sidebarWidth WRITE setSidebarWidth NOTIFY sidebarWidthChanged)
     Q_PROPERTY(bool sidebarCollapsed READ sidebarCollapsed WRITE setSidebarCollapsed NOTIFY sidebarCollapsedChanged)
     Q_PROPERTY(int artworkSize READ artworkSize WRITE setArtworkSize NOTIFY artworkSizeChanged)
+    /// "auto", "on" or "off". Auto turns TV mode on in a Plasma Bigscreen
+    /// session, which exports PLASMA_PLATFORM=mediacenter.
+    Q_PROPERTY(QString tvModeSetting READ tvModeSetting WRITE setTvModeSetting NOTIFY tvModeChanged)
+    /// The 10-foot, remote-control layout: spatial arrow-key navigation,
+    /// full screen, and Now Playing as the landing page.
+    Q_PROPERTY(bool tvMode READ tvMode NOTIFY tvModeChanged)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
     Q_PROPERTY(bool syncing READ syncing NOTIFY syncingChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
@@ -149,6 +155,9 @@ public:
     void setSidebarCollapsed(bool collapsed);
     int artworkSize() const;
     void setArtworkSize(int gridUnits);
+    QString tvModeSetting() const;
+    void setTvModeSetting(const QString &setting);
+    bool tvMode() const;
     bool loading() const;
     bool syncing() const;
     QString error() const;
@@ -207,6 +216,7 @@ signals:
     void sidebarWidthChanged();
     void sidebarCollapsedChanged();
     void artworkSizeChanged();
+    void tvModeChanged();
     void loadingChanged();
     void syncingChanged();
     void errorChanged();
@@ -375,4 +385,5 @@ private:
     int m_sidebarWidth = 0;
     bool m_sidebarCollapsed = false;
     int m_artworkSize = 11;
+    QString m_tvModeSetting = QStringLiteral("auto");
 };

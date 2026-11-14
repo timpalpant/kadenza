@@ -48,6 +48,32 @@ Kirigami.ScrollablePage {
         }
 
         Item {
+            Kirigami.FormData.label: i18n("Interface")
+            Kirigami.FormData.isSection: true
+        }
+
+        QQC2.ComboBox {
+            id: tvModeBox
+            Kirigami.FormData.label: i18n("TV mode:")
+            textRole: "text"
+            valueRole: "value"
+            model: [
+                { text: i18n("Automatic"), value: "auto" },
+                { text: i18n("On"), value: "on" },
+                { text: i18n("Off"), value: "off" }
+            ]
+            Component.onCompleted: currentIndex = indexOfValue(App.tvModeSetting)
+            onActivated: App.tvModeSetting = currentValue
+        }
+        QQC2.Label {
+            text: i18n("A full-screen layout for televisions, driven by a remote's arrow, OK and Back buttons. Hold OK for a tile's options. Automatic turns it on in a Plasma Bigscreen session.")
+            font: Kirigami.Theme.smallFont
+            color: Kirigami.Theme.disabledTextColor
+            wrapMode: Text.Wrap
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 24
+        }
+
+        Item {
             Kirigami.FormData.label: i18n("Account")
             Kirigami.FormData.isSection: true
         }

@@ -12,6 +12,10 @@ Kirigami.Page {
     padding: Kirigami.Units.largeSpacing
 
     readonly property bool tabbed: width < Kirigami.Units.gridUnit * 48
+    readonly property bool tvMode: applicationWindow().tvMode
+    // The transport is what a remote reaches for first, so it starts with
+    // focus on a TV.
+    Component.onCompleted: if (tvMode) Qt.callLater(() => playButton.forceActiveFocus(Qt.TabFocusReason))
     // Only meaningful in the wide layout; the narrow one already puts lyrics
     // behind their own tab.
     property bool lyricsExpanded: true
@@ -88,7 +92,8 @@ Kirigami.Page {
                         anchors.centerIn: parent
                         width: Math.max(Kirigami.Units.gridUnit * 6,
                                         Math.min(parent.width, parent.height,
-                                                 Kirigami.Units.gridUnit * 24))
+                                                 Kirigami.Units.gridUnit
+                                                 * (page.tvMode ? 36 : 24)))
                         height: width
                         source: App.player.artwork
                         fallbackIcon: "media-album-cover"
@@ -161,15 +166,18 @@ Kirigami.Page {
                         QQC2.ToolTip.text: text
                     }
                     QQC2.RoundButton {
+                        id: playButton
                         text: App.player.playing ? i18n("Pause") : i18n("Play")
                         icon.name: App.player.playing ? "media-playback-pause"
                                                       : "media-playback-start"
                         display: QQC2.AbstractButton.IconOnly
                         highlighted: true
-                        implicitWidth: Kirigami.Units.gridUnit * 3
+                        implicitWidth: Kirigami.Units.gridUnit * (page.tvMode ? 4 : 3)
                         implicitHeight: implicitWidth
-                        icon.width: Kirigami.Units.iconSizes.smallMedium
-                        icon.height: Kirigami.Units.iconSizes.smallMedium
+                        icon.width: page.tvMode ? Kirigami.Units.iconSizes.medium
+                                                : Kirigami.Units.iconSizes.smallMedium
+                        icon.height: page.tvMode ? Kirigami.Units.iconSizes.medium
+                                                 : Kirigami.Units.iconSizes.smallMedium
                         onClicked: App.player.playPause()
                         Layout.leftMargin: Kirigami.Units.largeSpacing
                         Layout.rightMargin: Kirigami.Units.largeSpacing

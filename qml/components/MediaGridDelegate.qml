@@ -36,8 +36,24 @@ QQC2.ItemDelegate {
     width: GridView.view ? GridView.view.cellWidth : Kirigami.Units.gridUnit * 10
     height: GridView.view ? GridView.view.cellHeight : Kirigami.Units.gridUnit * 13
     padding: Kirigami.Units.smallSpacing
+    // Tiles take keyboard focus only in TV mode, where the remote's arrows
+    // move between them. On the desktop they stay pointer targets, so Tab is
+    // not dragged through every album in the library.
+    focusPolicy: applicationWindow().tvMode ? Qt.StrongFocus : Qt.NoFocus
+    // The focused tile grows past its cell, so it has to sit above the
+    // neighbours it overlaps.
+    z: visualFocus ? 1 : 0
     onClicked: openRequested()
     onPressAndHold: menuLoader.popup()
+
+    ActivationKeys {
+        id: activationKeys
+        onTapped: root.openRequested()
+        // A remote has no pointer position to open the menu at.
+        onHeld: menuLoader.popupAt(root.width / 4, root.height / 4)
+    }
+    Keys.onPressed: event => activationKeys.press(event)
+    Keys.onReleased: event => activationKeys.release(event)
     TapHandler {
         acceptedButtons: Qt.RightButton
         onTapped: menuLoader.popup()
@@ -52,19 +68,38 @@ QQC2.ItemDelegate {
         id: menuLoader
         active: false
         sourceComponent: menuComponent
-        onLoaded: item.popup()
-        function popup() {
-            if (active) {
+        // Where the next popup should open; negative means at the pointer,
+        // which is also how a pointer-opened menu is told apart.
+        property point position: Qt.point(-1, -1)
+        onLoaded: open()
+        function open() {
+            if (position.x < 0)
                 item.popup();
-            } else {
-                active = true; // onLoaded pops it
-            }
+            else
+                item.popup(root, position.x, position.y);
+        }
+        function popup() {
+            position = Qt.point(-1, -1);
+            if (active)
+                open();
+            else
+                active = true; // onLoaded opens it
+        }
+        function popupAt(x, y) {
+            position = Qt.point(x, y);
+            if (active)
+                open();
+            else
+                active = true;
         }
     }
 
     Component {
         id: menuComponent
         QQC2.Menu {
+            // Opened from the remote, focus goes back to the tile it came
+            // from rather than to wherever the page scope last had it.
+            onClosed: if (menuLoader.position.x >= 0) root.forceActiveFocus(Qt.TabFocusReason)
             QQC2.MenuItem {
                 text: i18n("Play")
                 icon.name: "media-playback-start"
@@ -119,8 +154,9 @@ QQC2.ItemDelegate {
             Layout.preferredHeight: width
 
             // A small lift on hover, so the pointer target reads as a tile
-            // rather than a flat picture.
-            scale: root.hovered ? 1.03 : 1
+            // rather than a flat picture. Keyboard focus lifts it further:
+            // across a room, the focused tile has to stand out at a glance.
+            scale: root.visualFocus ? 1.06 : root.hovered ? 1.03 : 1
             Behavior on scale {
                 NumberAnimation {
                     duration: Kirigami.Units.shortDuration
@@ -152,12 +188,27 @@ QQC2.ItemDelegate {
                     }
                 }
             }
+            // The focus ring, drawn outside the artwork so it does not cover
+            // any of it.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -border.width - 1
+                visible: root.visualFocus
+                color: "transparent"
+                radius: artwork.circular ? width / 2 : Kirigami.Units.smallSpacing * 2
+                border.width: Kirigami.Units.smallSpacing
+                border.color: Kirigami.Theme.highlightColor
+            }
             Loader {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: Kirigami.Units.smallSpacing
-                active: root.playableCollection && root.hovered
+                // Shown on focus as well as hover: with a remote it marks
+                // the tile as playable, and holding OK offers Play.
+                active: root.playableCollection && (root.hovered || root.visualFocus)
                 sourceComponent: QQC2.RoundButton {
+                    // OK opens the tile itself; arrows should not stop here.
+                    focusPolicy: Qt.NoFocus
                     text: i18n("Play")
                     icon.name: "media-playback-start"
                     display: QQC2.AbstractButton.IconOnly

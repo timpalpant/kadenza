@@ -127,6 +127,7 @@ AppController::AppController(QObject *parent)
     m_lastPage = general.readEntry("LastPage", QStringLiteral("home"));
     m_sidebarCollapsed = general.readEntry("SidebarCollapsed", false);
     m_artworkSize = qBound(7, general.readEntry("ArtworkSize", 11), 20);
+    m_tvModeSetting = general.readEntry("TvMode", QStringLiteral("auto"));
     connect(&m_player, &PlayerController::tokensChanged, this, [this](const QString &developer, const QString &user, const QString &storefront) {
         const bool wasAuthenticated = authenticated();
         m_api.setTokens(developer, user, storefront);
@@ -464,6 +465,30 @@ void AppController::setSidebarCollapsed(bool collapsed)
     KConfigGroup(config, "General").writeEntry("SidebarCollapsed", collapsed);
     config->sync();
     Q_EMIT sidebarCollapsedChanged();
+}
+QString AppController::tvModeSetting() const
+{
+    return m_tvModeSetting;
+}
+void AppController::setTvModeSetting(const QString &setting)
+{
+    if (m_tvModeSetting == setting)
+        return;
+    m_tvModeSetting = setting;
+    auto config = KSharedConfig::openConfig();
+    KConfigGroup(config, "General").writeEntry("TvMode", setting);
+    config->sync();
+    Q_EMIT tvModeChanged();
+}
+bool AppController::tvMode() const
+{
+    if (m_tvModeSetting == QLatin1String("on"))
+        return true;
+    if (m_tvModeSetting == QLatin1String("off"))
+        return false;
+    // Plasma Bigscreen's session script exports this; Plasma Mobile uses
+    // "phone" and the desktop leaves it unset.
+    return qEnvironmentVariable("PLASMA_PLATFORM").contains(QLatin1String("mediacenter"));
 }
 int AppController::artworkSize() const
 {

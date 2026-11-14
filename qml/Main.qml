@@ -24,6 +24,13 @@ Kirigami.ApplicationWindow {
                                           Kadenza.Pages.settings, Kadenza.Pages.about]
     property string pendingPlaylistSongId: ""
     readonly property bool compactMode: width < Kirigami.Units.gridUnit * 40
+    // The 10-foot layout for a TV and a remote. See RemoteNavigation for the
+    // keys and App.tvMode for when it turns on.
+    readonly property bool tvMode: App.tvMode
+    // In TV mode the app opens on Now Playing, but the restored queue only
+    // arrives once the playback helper has started. Until the user goes
+    // somewhere themselves, the first track to show up takes them there.
+    property bool tvLandingPending: tvMode
     // Wide enough for the longest destination ("Recently Added") at the default
     // font, so the sidebar does not open with an elided label.
     property real desktopSidebarWidth: App.sidebarWidth > 0
@@ -79,6 +86,7 @@ Kirigami.ApplicationWindow {
         const pageKey = String(key);
         const component = componentFor(pageKey);
         if (!component) return;
+        tvLandingPending = false;
         if (currentPage === pageKey) {
             if (compactMode) globalDrawer.close();
             return;
@@ -99,6 +107,9 @@ Kirigami.ApplicationWindow {
         currentPage = pageKey;
         App.lastPage = pageKey;
         if (compactMode) globalDrawer.close();
+        // Put the remote somewhere visible on the new page. Pages that load
+        // their content later are picked up by the first arrow press instead.
+        if (tvMode) Qt.callLater(focusPage);
     }
 
     function goBack() {
@@ -187,6 +198,69 @@ Kirigami.ApplicationWindow {
     }
 
     Shortcut { sequence: "Alt+Left"; enabled: pageStack.depth > 1; onActivated: root.goBack() }
+
+    // Back steps out one level at a time, the way TV apps do: out of the
+    // sidebar into the page, then out of a detail page, then from a top-level
+    // page into the sidebar. Leaving the app is the remote's Home button.
+    function handleBack() {
+        if (remote.sidebarFocused) {
+            if (compactMode) globalDrawer.close();
+            focusPage();
+        } else if (navigationHistory.length > 1 && pageStack.depth > 1) {
+            goBack();
+            // The page underneath remembers its focused tile, as a focus
+            // scope, so this only matters when it never had one.
+            Qt.callLater(() => {
+                if (!pageStack.currentItem || !pageStack.currentItem.activeFocus)
+                    root.focusPage();
+            });
+        } else {
+            focusSidebar();
+        }
+    }
+
+    function focusPage() {
+        if (pageStack.currentItem)
+            remote.focusFirst(pageStack.currentItem);
+    }
+
+    function focusSidebar() {
+        if (!App.authenticated) return;
+        if (compactMode) globalDrawer.open();
+        remote.focusFirst(globalDrawer.contentItem);
+    }
+
+    Kadenza.RemoteNavigation {
+        id: remote
+        window: root
+        enabled: root.tvMode
+        sidebar: globalDrawer.contentItem
+        content: root.pageStack.currentItem
+        onBackPressed: root.handleBack()
+    }
+
+    function applyTvMode() {
+        if (tvMode)
+            root.showFullScreen();
+        else if (root.visibility === Window.FullScreen)
+            root.showNormal();
+    }
+    onTvModeChanged: applyTvMode()
+
+    Connections {
+        target: App.player
+        enabled: root.tvLandingPending
+        function onNowPlayingChanged() {
+            if (App.authenticated && App.player.title.length > 0)
+                root.navigate(Kadenza.Pages.nowPlaying);
+        }
+    }
+    // Only a restore right after launch counts as the landing page.
+    Timer {
+        running: root.tvLandingPending
+        interval: 20000
+        onTriggered: root.tvLandingPending = false
+    }
     Shortcut { sequence: "Ctrl+Alt+Space"; onActivated: App.player.playPause() }
 
     Connections {
@@ -212,8 +286,11 @@ Kirigami.ApplicationWindow {
         drawerOpen: !root.compactMode && App.authenticated
         enabled: App.authenticated
         collapsible: !root.compactMode
-        collapsed: !root.compactMode && App.sidebarCollapsed
-        onCollapsedChanged: if (!root.compactMode) App.sidebarCollapsed = collapsed
+        // On a TV the sidebar is an icon rail that opens out while the
+        // remote is in it, so the page keeps the width the rest of the time.
+        collapsed: !root.compactMode && (root.tvMode ? !remote.sidebarFocused
+                                                     : App.sidebarCollapsed)
+        onCollapsedChanged: if (!root.compactMode && !root.tvMode) App.sidebarCollapsed = collapsed
         actions: [
             Kirigami.Action {
                 text: i18n("Listen Now")
@@ -326,7 +403,7 @@ Kirigami.ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             width: Kirigami.Units.smallSpacing * 2
-            visible: !root.compactMode && !globalDrawer.collapsed
+            visible: !root.compactMode && !globalDrawer.collapsed && !root.tvMode
             hoverEnabled: true
             cursorShape: Qt.SplitHCursor
             z: 100
@@ -365,7 +442,11 @@ Kirigami.ApplicationWindow {
     // visit. Bound, each navigation therefore built its page, threw it away
     // and built it again; on a library grid that was twice the work of the
     // most expensive page in the app.
-    Component.onCompleted: root.resetNavigation(root.initialPageKey)
+    Component.onCompleted: {
+        root.resetNavigation(App.authenticated && root.tvMode && App.player.title.length > 0
+                             ? Kadenza.Pages.nowPlaying : root.initialPageKey);
+        root.applyTvMode();
+    }
 
     pageStack.columnView.columnResizeMode: Kirigami.ColumnView.SingleColumn
 

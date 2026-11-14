@@ -42,6 +42,8 @@ is shown only while Apple's own sign-in requires interaction.
   desktop jump-list actions, and optional system-tray operation
 - Persistent Apple session in an isolated Electron profile
 - Adaptive single-pane Kirigami navigation for compact windows
+- TV mode for Plasma Bigscreen and other living-room setups, driven entirely by
+  a remote's arrows, OK and Back
 
 An active Apple Music subscription, network access, and an x86-64 or arm64
 Linux system are required for full playback. Widevine on Linux does not provide persistent
@@ -105,6 +107,27 @@ artwork loads asynchronously and then fades in.
 
 Use `now-playing`, `albums`, or `search` as `KADENZA_DEMO_PAGE` to capture the
 other documented views. Demo data, artwork, and lyrics are fictional.
+
+## TV mode
+
+TV mode is a full-screen layout for a television and a remote. It turns on
+automatically in a Plasma Bigscreen session (which exports
+`PLASMA_PLATFORM=mediacenter`) and can be forced on or off under
+Settings → Interface.
+
+Any remote that sends ordinary key codes works; nothing is specific to one
+model:
+
+| Key | Action |
+| --- | --- |
+| Arrows | Move to the nearest tile, row or button in that direction, across shelves, the player bar and the sidebar |
+| OK (Enter, Return or Select) | Open a tile, play a track, press a button |
+| Hold OK, or Menu | The tile's or row's options: play, play next, love, add to library… |
+| Back (or Escape, Backspace) | Close a menu, leave a detail page, then move into the sidebar |
+
+The app opens on Now Playing with focus on Play/Pause, and the sidebar stays a
+narrow icon rail until the remote moves into it. Play/pause, next and previous
+keys go through MPRIS and the global media shortcuts as usual.
 
 ## Local library cache
 

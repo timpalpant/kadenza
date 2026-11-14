@@ -27,10 +27,13 @@ Kirigami.Page {
             Kirigami.SearchField {
                 id: searchField
                 placeholderText: i18n("Search %1", page.title.toLowerCase())
-                focus: true
+                // Not on a TV: a focused field brings up the on-screen
+                // keyboard over the page the user came to browse.
+                focus: !applicationWindow().tvMode
                 Layout.fillWidth: true
                 onTextChanged: proxyModel.filterString = searchField.text
-                Component.onCompleted: Qt.callLater(() => searchField.forceActiveFocus())
+                Component.onCompleted: if (!applicationWindow().tvMode)
+                                           Qt.callLater(() => searchField.forceActiveFocus())
             }
         }
     }

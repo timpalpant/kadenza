@@ -43,10 +43,12 @@ qt_add_executable(kadenza
     src/player/playercontroller.cpp src/player/playercontroller.h
     src/player/queueids.cpp src/player/queueids.h
     src/player/mprisplayer.cpp src/player/mprisplayer.h
+    src/ui/remotenavigation.cpp src/ui/remotenavigation.h
+    src/ui/spatialnavigation.cpp src/ui/spatialnavigation.h
 )
 
 target_include_directories(kadenza PRIVATE
-    src src/api src/data src/media src/player ${CMAKE_CURRENT_BINARY_DIR})
+    src src/api src/data src/media src/player src/ui ${CMAKE_CURRENT_BINARY_DIR})
 
 target_compile_definitions(kadenza PRIVATE
     KADENZA_SOURCE_SIDECAR="${CMAKE_CURRENT_SOURCE_DIR}/sidecar")
@@ -87,6 +89,7 @@ qt_add_qml_module(kadenza
         qml/components/MediaGrid.qml
         qml/components/ArtworkSizeSlider.qml
         qml/components/LinkLabel.qml
+        qml/components/ActivationKeys.qml
     RESOURCES
         data/icons/io.github.timpalpant.kadenza.svg
         data/demo/violet-hours.svg

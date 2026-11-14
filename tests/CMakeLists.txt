@@ -62,3 +62,11 @@ target_link_libraries(kadenza-artwork-tests PRIVATE Qt6::Core Qt6::Gui Qt6::Test
 add_test(NAME artworkcache COMMAND kadenza-artwork-tests)
 # Needs a QGuiApplication for image decoding, but no display.
 set_tests_properties(artworkcache PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+
+qt_add_executable(kadenza-spatialnavigation-tests
+    spatialnavigationtest.cpp
+    ../src/ui/spatialnavigation.cpp ../src/ui/spatialnavigation.h)
+target_include_directories(kadenza-spatialnavigation-tests PRIVATE ../src/ui)
+target_link_libraries(kadenza-spatialnavigation-tests PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME spatialnavigation COMMAND kadenza-spatialnavigation-tests)

@@ -42,13 +42,24 @@ RowLayout {
             target: slider
             property: "value"
             value: App.player.positionMs
-            when: !slider.pressed
+            when: !slider.pressed && !keySeek.running
             restoreMode: Binding.RestoreNone
         }
 
         // Seek once on release rather than on every drag event, so scrubbing
         // does not flood the sidecar with intermediate positions.
         onPressedChanged: if (!pressed) App.player.seek(value)
+
+        // Arrow keys step ten seconds. A held arrow repeats, so the seek
+        // waits for a pause in the presses, for the same reason as above;
+        // until then the handle shows where the presses have got to.
+        stepSize: 10000
+        onMoved: if (!pressed) keySeek.restart()
+        Timer {
+            id: keySeek
+            interval: 400
+            onTriggered: App.player.seek(slider.value)
+        }
     }
 
     QQC2.Label {

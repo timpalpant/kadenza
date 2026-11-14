@@ -47,13 +47,26 @@ QQC2.ItemDelegate {
     visible: !(root.hidePast && root.past)
     padding: Kirigami.Units.smallSpacing
     enabled: !root.song || root.playable
-    highlighted: root.forceHighlighted || (root.song && ListView.isCurrentItem)
+    // Rows take keyboard focus only in TV mode; see MediaGridDelegate.
+    focusPolicy: applicationWindow().tvMode ? Qt.StrongFocus : Qt.NoFocus
+    highlighted: root.forceHighlighted || root.visualFocus
+                 || (root.song && ListView.isCurrentItem)
     opacity: root.past ? 0.55 : 1
     onClicked: {
         if (root.song && ListView.view) ListView.view.currentIndex = root.index;
         else if (!root.song) root.openRequested();
     }
     onDoubleClicked: if (root.song) root.playRequested()
+
+    // From the keyboard, OK does what a double click does on a song and a
+    // click does on anything else; holding it opens the row's menu.
+    ActivationKeys {
+        id: activationKeys
+        onTapped: root.song ? root.playRequested() : root.openRequested()
+        onHeld: menu.open()
+    }
+    Keys.onPressed: event => activationKeys.press(event)
+    Keys.onReleased: event => activationKeys.release(event)
     QQC2.ToolTip.visible: hovered && root.song && !root.playable
     QQC2.ToolTip.text: i18n("Not available to play yet")
 
