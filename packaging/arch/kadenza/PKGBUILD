@@ -33,7 +33,7 @@ license=('GPL-3.0-or-later')
 depends=('qt6-base' 'qt6-declarative' 'kirigami' 'ki18n' 'kcoreaddons' 'kconfig' 'knotifications' 'kglobalaccel' 'kdbusaddons' 'glibc' 'qqc2-desktop-style' 'gtk3' 'nss')
 makedepends=('cmake' 'ninja' 'nodejs' 'npm')
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
-sha256sums=('REPLACE_WITH_RELEASE_SHA256')
+sha256sums=('fd30301fd7d962227452e326068ca8e36c69b307eada37f6f4a3a6b097cc8c37')
 
 # electron's package.json has no postinstall: install.js is exposed as a
 # "bin" script (`install-electron`) meant to be invoked explicitly, so
