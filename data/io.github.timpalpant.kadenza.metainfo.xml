@@ -42,6 +42,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.4.1" date="2026-11-21">
+      <description>
+        <p>Search works again.</p>
+        <ul>
+          <li>Searching Apple Music no longer fails with "Request is forbidden" (429)</li>
+          <li>Artist, album, playlist, curator and activity results appear on the search page again</li>
+          <li>Search suggestions wait until you pause typing instead of firing on every keystroke</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-11-14">
       <description>
         <p>Kadenza can now be driven from the sofa with a TV remote.</p>
