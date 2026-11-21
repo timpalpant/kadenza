@@ -135,6 +135,7 @@ Kirigami.ScrollablePage {
         SearchSection {
             heading: i18n("Albums")
             model: App.searchAlbumsModel
+            tileWidth: page.tileWidth
         }
         SearchSection {
             heading: i18n("Songs")
@@ -146,14 +147,17 @@ Kirigami.ScrollablePage {
         SearchSection {
             heading: i18n("Playlists")
             model: App.searchPlaylistsModel
+            tileWidth: page.tileWidth
         }
         SearchSection {
             heading: i18n("Curators")
             model: App.searchCuratorsModel
+            tileWidth: page.tileWidth
         }
         SearchSection {
             heading: i18n("Activities")
             model: App.searchActivitiesModel
+            tileWidth: page.tileWidth
         }
 
         Kirigami.PlaceholderMessage {

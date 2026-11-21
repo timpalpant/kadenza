@@ -19,6 +19,16 @@ ColumnLayout {
         visible: root.model && root.model.count > 0
     }
 
+    Component {
+        id: tileDelegate
+        MediaGridDelegate {
+            width: root.tileWidth
+            height: root.tileWidth + root.labelHeight
+            onOpenRequested: applicationWindow().openDetail(mediaId, catalogId, mediaType, title, subtitle, artwork)
+            onPlayRequested: App.playCollection(mediaId, catalogId, mediaType)
+        }
+    }
+
     ListView {
         model: root.model
         orientation: root.horizontal ? ListView.Horizontal : ListView.Vertical
@@ -29,9 +39,13 @@ ColumnLayout {
         interactive: root.interactive
         reuseItems: !root.interactive
         Layout.fillWidth: true
-        Layout.preferredHeight: root.horizontal ? (root.model === App.searchArtistsModel ? root.tileWidth * 0.75 + root.labelHeight : root.tileWidth + root.labelHeight) : contentHeight
+        Layout.preferredHeight: root.horizontal ? root.tileWidth + root.labelHeight : contentHeight
 
-        delegate: Loader { sourceComponent: root.delegateConfig }
+        // A section passes its own row component (Songs uses MediaDelegate);
+        // every other section shows the standard grid tile. The component is
+        // handed to the ListView directly rather than through a Loader, so
+        // delegates keep the ListView attached properties they size from.
+        delegate: root.delegateConfig ?? tileDelegate
 
         QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
