@@ -1,5 +1,6 @@
 #include "apiclient.h"
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -64,9 +65,17 @@ void ApiClient::request(const QString &tag, const QString &path, const QByteArra
     if (url.isRelative())
         url = QUrl(QStringLiteral("https://api.music.apple.com") + (path.startsWith('/') ? path : '/' + path));
 
+    if (qEnvironmentVariableIsSet("KADENZA_TRACE"))
+        qInfo().noquote() << QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss.zzz")) << "kadenza: request tag=" << tag << method
+                          << url.path();
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + m_developerToken.toUtf8());
-    if (!m_userToken.isEmpty())
+    // Apple answers catalog search with 429 "Request is forbidden" (code
+    // 42900) when the web-player developer token is paired with a Music User
+    // Token, even on the first request of a session. Catalog search needs no
+    // user context, so it goes out with the developer token alone.
+    const bool catalogSearch = url.path().startsWith(QStringLiteral("/v1/catalog/")) && url.path().endsWith(QStringLiteral("/search"));
+    if (!m_userToken.isEmpty() && !catalogSearch)
         request.setRawHeader("Music-User-Token", m_userToken.toUtf8());
     // The developer token exposed by music.apple.com is scoped to Apple's web
     // player. Apple rejects it unless these browser-origin headers accompany
@@ -96,6 +105,14 @@ void ApiClient::request(const QString &tag, const QString &path, const QByteArra
             if (!errors.isEmpty()) {
                 const auto object = errors.first().toObject();
                 message = object.value(QStringLiteral("detail")).toString(object.value(QStringLiteral("title")).toString(message));
+            }
+            if (qEnvironmentVariableIsSet("KADENZA_TRACE")) {
+                QStringList headers;
+                for (const auto &pair : reply->rawHeaderPairs())
+                    headers << QString::fromUtf8(pair.first + ": " + pair.second);
+                qInfo().noquote() << QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss.zzz")) << "kadenza: response tag=" << tag
+                                  << "status=" << status << "headers=" << headers.join(QStringLiteral("; "))
+                                  << "body=" << QString::fromUtf8(body.left(500));
             }
             Q_EMIT failed(tag, status, message);
             return;

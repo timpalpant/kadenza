@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QSet>
 #include <QThread>
+#include <QTimer>
 #include <QVariantList>
 #include <qqmlintegration.h>
 
@@ -378,6 +379,10 @@ private:
     QStringList m_searchHistory;
     QStringList m_searchHints;
     QString m_searchTerm;
+    // Hints are debounced: Apple rate-limits the catalog API, and a request per
+    // keystroke burns the budget the real search then needs.
+    QTimer m_searchHintsTimer;
+    QString m_pendingHintTerm;
     bool m_searchLibrary = false;
     QString m_lastPage = QStringLiteral("home");
     int m_loadingCount = 0;

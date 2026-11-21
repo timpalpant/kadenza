@@ -161,6 +161,14 @@ AppController::AppController(QObject *parent)
         });
     connect(&m_api, &ApiClient::succeeded, this, &AppController::handleSuccess);
     connect(&m_api, &ApiClient::failed, this, &AppController::handleFailure);
+    m_searchHintsTimer.setSingleShot(true);
+    m_searchHintsTimer.setInterval(300);
+    connect(&m_searchHintsTimer, &QTimer::timeout, this, [this] {
+        QUrlQuery query;
+        query.addQueryItem(QStringLiteral("term"), m_pendingHintTerm);
+        query.addQueryItem(QStringLiteral("limit"), QStringLiteral("8"));
+        m_api.get(QStringLiteral("search-hints"), QStringLiteral("/v1/catalog/%1/search/hints?%2").arg(m_api.storefront(), query.toString()));
+    });
     connect(&m_api, &ApiClient::succeededRaw, this, [this](const QString &tag, const QByteArray &body) {
         // Raw replies are only ever library pages.
         if (tag.startsWith(kSyncTagPrefix))
@@ -957,6 +965,7 @@ void AppController::search(const QString &term)
 {
     if (m_demo)
         return;
+    m_searchHintsTimer.stop();
     const QString trimmed = term.trimmed();
     if (trimmed.isEmpty()) {
         m_searchTerm.clear();
@@ -1219,16 +1228,15 @@ void AppController::requestSearchHints(const QString &term)
         return;
     const QString trimmed = term.trimmed();
     if (trimmed.isEmpty()) {
+        m_searchHintsTimer.stop();
         if (!m_searchHints.isEmpty()) {
             m_searchHints.clear();
             Q_EMIT searchHintsChanged();
         }
         return;
     }
-    QUrlQuery query;
-    query.addQueryItem(QStringLiteral("term"), trimmed);
-    query.addQueryItem(QStringLiteral("limit"), QStringLiteral("8"));
-    m_api.get(QStringLiteral("search-hints"), QStringLiteral("/v1/catalog/%1/search/hints?%2").arg(m_api.storefront(), query.toString()));
+    m_pendingHintTerm = trimmed;
+    m_searchHintsTimer.start();
 }
 
 void AppController::lookup(const QString &type, const QString &term, const QString &name)
